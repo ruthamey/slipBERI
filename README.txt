@@ -25,9 +25,9 @@ slipBERI can then be run in matlab by:
 Examples--
 
 To run this code using examples, please download:
-Amey, Ruth M. J. (2018) Napa Valley Earthquake geodetic slip inversion tools and data. University of Leeds. [Dataset] https://doi.org/10.5518/445
+Amey, Ruth M. J. (2018) Napa Valley Earthquake geodetic slip inversion tools and data. University of Leeds. [Dataset] http://archive.researchdata.leeds.ac.uk/446/
 or
-Amey, Ruth M. J. (2018) Central Tottori Earthquake geodetic slip inversion tools and data. University of Leeds. [Dataset] https://doi.org/10.5518/446
+Amey, Ruth M. J. (2018) Central Tottori Earthquake geodetic slip inversion tools and data. University of Leeds. [Dataset] http://archive.researchdata.leeds.ac.uk/445/
 
 These datasets contain all the data required to run slipBERI, as well as a function (make_<nameofearthquake>_structure_required_for_slipBERI.m) to be run first, to set up all the inputs required by slipBERI.
 
