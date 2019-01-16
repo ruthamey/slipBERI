@@ -18,7 +18,7 @@ Details on all the inputs required for slipBERI can be found in the 'help' secti
 An example set-up function (make_structure_required_for_slipBERI.m) should be run first, to make structures containing the information required by slipBERI.
 
 slipBERI can then be run in matlab by:
->> slipBERI(fault, data, testing, invert, priors, elastic_params, display, housekeeping )
+>> slipBERI(fault, data, invert, priors, elastic_params, display, housekeeping )
 
 * * *
 
