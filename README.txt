@@ -13,9 +13,9 @@ This code is expected to work correctly for von Karman regularisation on one fau
 
 Using slipBERI--
 
-Details on all the inputs required for slipBERI can be found in the 'help' section of slipBERI.m
+Details on all the inputs required for slipBERI can be found in the 'help' section of slipBERI.m or a reader-friendly version can be found here: https://docs.google.com/document/d/1cUXLRxN-oB8Q8kGOueq2c-Zxr3W1vDgWpGUw1MAEx5s/edit#
 
-An example set-up function (make_structure_required_for_slipBERI.m) should be run first, to make structures containing the information required by slipBERI.
+An example set-up function (make_structure_required_for_slipBERI.m) should be run first, to make structures containing the information required by slipBERI, which can then be edited as appropriate.
 
 slipBERI can then be run in matlab by:
 >> slipBERI(fault, data, invert, priors, elastic_params, display, housekeeping )
