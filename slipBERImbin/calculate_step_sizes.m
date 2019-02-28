@@ -1,4 +1,4 @@
-function [ new_step_sizes ] = calculate_step_sizes( m, total_n_slip_patches, invert, G_curr, d,inv_sigma_d, inv_sigma_s, step_sizes, probability_target, G_ss_curr, G_ds_curr,n_fault_strands, n_fault_strands_for_smoothing, n_slip_patches_on_each_fault_strand, first_patch_in_strand, last_patch_in_strand, first_patch_in_strand_for_smoothing_master, last_patch_in_strand_for_smoothing_master, det_sigma_s, L, M0_likelihood_before, elastic_params, spatial_model2, spatial_model3, data, m_identifyer_master, G_ss_LUT, G_ds_LUT, dip_LUT, n_data, fault_strand_identifyer, min_dip, max_dip, onoffidentifyer, n_slip_patches_ON_on_each_fault_strand_for_smoothing, n_slip_patches_on_each_fault_strand_for_smoothing, d_identifyer, patchx, patchz, disloc_model, n_down_dip_patches_for_smoothing, n_along_strike_patches_for_smoothing, along_strike_sep_dist, ~, n_down_dip_patches, fault_strand_togetherness, H, first_patch_in_strand_for_smoothing,last_patch_in_strand_for_smoothing, fault_length_for_smoothing, fault_width_for_smoothing, InSAR_identifyer, n_harmonics, predominant_faulting_style, priors, n_InSAR_scenes, m_on, circharmparameters)
+function [ new_step_sizes ] = calculate_step_sizes( m, total_n_slip_patches, invert, G_curr, d,inv_sigma_d, inv_sigma_s, step_sizes, probability_target, G_ss_curr, G_ds_curr,n_fault_strands, n_fault_strands_for_smoothing, n_slip_patches_on_each_fault_strand, first_patch_in_strand, last_patch_in_strand, first_patch_in_strand_for_smoothing_master, last_patch_in_strand_for_smoothing_master, det_sigma_s, L, M0_likelihood_before, elastic_params, spatial_model2, spatial_model3, data, m_identifyer_master, G_ss_LUT, G_ds_LUT, dip_LUT, n_data, fault_strand_identifyer, min_dip, max_dip, onoffidentifyer, n_slip_patches_ON_on_each_fault_strand_for_smoothing, n_slip_patches_on_each_fault_strand_for_smoothing, d_identifyer, patchx, patchz, disloc_model, n_down_dip_patches_for_smoothing, n_along_strike_patches_for_smoothing, along_strike_sep_dist, ~, n_down_dip_patches, fault_strand_togetherness, H, first_patch_in_strand_for_smoothing,last_patch_in_strand_for_smoothing, fault_length_for_smoothing, fault_width_for_smoothing, InSAR_identifyer, n_harmonics, predominant_faulting_style, priors, n_InSAR_scenes, m_on, circharmparameters, Gramp)
 % calculate_step_sizes_with_depth works out what step sizes should be used
 % for each patch.
 %
@@ -105,13 +105,18 @@ end
 if strcmp(invert.solve_for_InSAR_offset, 'yes') ==1
     [I, ~] = find( m_identifyer==5, 1);
     offset_start_number = I;
-    offset_initialshort = m( m_identifyer == 5);
-    offset_initial = zeros(length(d),1);                        % make the offset vector the same length as the d vector...
-    for pq = 1: length(offset_initialshort)
-        offset_initial(InSAR_identifyer==pq) = offset_initialshort(pq);        %... but only add offset to InSAR. And add the one offset value to ALL the InSAR
+    offset_or_ramp_initialshort = m( m_identifyer == 5);
+    offset_or_ramp_initial = zeros(length(d),1);                        % make the offset vector the same length as the d vector...
+    for pq = 1: length(offset_or_ramp_initialshort)
+        offset_or_ramp_initial(InSAR_identifyer==pq) = offset_or_ramp_initialshort(pq);        %... but only add offset to InSAR. And add the one offset value to ALL the InSAR
     end
+elseif strcmp(invert.solve_for_InSAR_ramp, 'yes') == 1
+    [I, ~] = find( m_identifyer==12, 1);
+    ramp_start_number = I;
+    offset_or_ramp_initial = Gramp*m( m_identifyer == 12);
+    offset_or_ramp_initial((end+1):length(d)) = 0;    % No offset on GPS
 else
-    offset_initial = zeros(length(d),1);
+    offset_or_ramp_initial = zeros(length(d),1);
     offset_start_number = [];
 end
 
@@ -139,16 +144,16 @@ end
 % Calculate probability of the initial given slip distribution
 if strcmp(invert.inversion_type, 'bayesian') == 1 && strcmp(invert.smoothing, 'none') == 1
             %d_hat_initial = G_curr * slip_initial;
-            probability_before_perturbation = calc_loglikely(slip_initial, d, G_curr, inv_sigma_d, offset_initial, beta_initial);        %  not exp((-1/2) * ( (d - d_hat).' * inv_sigma_d * (d - d_hat) ));
+            probability_before_perturbation = calc_loglikely(slip_initial, d, G_curr, inv_sigma_d, offset_or_ramp_initial, beta_initial);        %  not exp((-1/2) * ( (d - d_hat).' * inv_sigma_d * (d - d_hat) ));
             probability_before_perturbation = (-length(d)/2)*log((2*pi*perturbed_beta^2)) + probability_before_perturbation;
 elseif strcmp(invert.smoothing, 'VK') == 1
             exponent_VK_before = calc_logprior_VK( slip_initial, inv_sigma_s, alpha2_initial, n_fault_strands_for_smoothing, first_patch_in_strand_for_smoothing, last_patch_in_strand_for_smoothing);
-            logL_before = calc_loglikely(slip_initial, d, G_curr, inv_sigma_d, offset_initial, beta_initial);
+            logL_before = calc_loglikely(slip_initial, d, G_curr, inv_sigma_d, offset_or_ramp_initial, beta_initial);
             probability_before_perturbation = sum((-n_slip_patches_ON_on_each_fault_strand_for_smoothing/2).*log(2*pi*alpha2_initial)) + (-length(d)/2)*log((2*pi*beta_initial^2) ) + sum(exponent_VK_before) + logL_before;          % matrix matrix. need to keep as a matrix coz the constants out the front are different for multiple faults strands. dont' need to calculate them as long as we work them out separately
             % this is actually the LOG probability. sum over all slip patches.
 elseif strcmp(invert.smoothing, 'laplacian') == 1
             exponent_laplacian_before = calc_logprior_laplacian( slip_initial, L, alpha2_initial, n_fault_strands_for_smoothing, first_patch_in_strand_for_smoothing, last_patch_in_strand_for_smoothing);
-            logL_before = calc_loglikely(slip_initial, d, G_curr, inv_sigma_d, offset_initial, beta_initial);
+            logL_before = calc_loglikely(slip_initial, d, G_curr, inv_sigma_d, offset_or_ramp_initial, beta_initial);
             probability_before_perturbation = sum((-n_slip_patches_ON_on_each_fault_strand_for_smoothing/2).*log(2*pi*alpha2_initial)) + (-length(d)/2)*log((2*pi*beta_initial^2)) + sum(exponent_laplacian_before) + logL_before;
 elseif strcmp(invert.smoothing, 'minimumnorm') == 1
             %logprior_before =  alpha2_initial * (slip_initial' * slip_initial);
@@ -156,7 +161,7 @@ elseif strcmp(invert.smoothing, 'minimumnorm') == 1
                 s_curr = slip_initial(first_patch_in_strand_for_smoothing(q):last_patch_in_strand_for_smoothing(q));
                 logprior_before(q,1) =  ( -1/(2*alpha2_initial(q)) * sum((s_curr'*s_curr)));
             end
-            logL_before = calc_loglikely(slip_initial, d, G_curr, inv_sigma_d, offset_initial, beta_initial);    
+            logL_before = calc_loglikely(slip_initial, d, G_curr, inv_sigma_d, offset_or_ramp_initial, beta_initial);    
             probability_before_perturbation = -(length(d)/2)*log((2*pi*beta_initial^2)) + sum(log(2*pi*alpha2_initial)) + logL_before + sum(logprior_before);          % matrix matrix. need to keep as a matrix coz the constants out the front are different for multiple faults strands. dont' need to calculate them as long as we work them out separately
 end
 
@@ -178,7 +183,7 @@ for i = 1: number_of_on_model_parameters
      perturbed_m(i) = m(i) + half_step_size(i); 
      mi = find(tofindtherighti==i,1, 'first');       % we're looping through the on model parameters. this tells us it correct position in all the model parameters, so we can update correct place in diff matrix.
      perturbed_slip = perturbed_m(m_identifyer == 1);
-     perturbed_offset = offset_initial;
+     perturbed_offset_or_ramp = offset_or_ramp_initial;
 
       if strcmp(invert.smoothing, 'VK') || strcmp(invert.smoothing, 'laplacian') || strcmp(invert.smoothing, 'minimumnorm') == 1
          if strcmp(priors.alpha2_prior, 'logarithmic') == 1
@@ -249,11 +254,11 @@ for i = 1: number_of_on_model_parameters
            
       elseif m_identifyer(i) == 5
           
-          perturbed_offset = zeros(length(d),1);
+          perturbed_offset_or_ramp = zeros(length(d),1);
           if strcmp(invert.solve_for_InSAR_offset, 'yes') == 1
-              perturbed_offsetshort = perturbed_m( m_identifyer == 5);
-              for pq = 1:length(perturbed_offsetshort)
-                  perturbed_offset(InSAR_identifyer==pq) = perturbed_offsetshort(pq);
+              perturbed_offset_or_rampshort = perturbed_m( m_identifyer == 5);
+              for pq = 1:length(perturbed_offset_or_rampshort)
+                  perturbed_offset_or_ramp(InSAR_identifyer==pq) = perturbed_offset_or_rampshort(pq);
               end
           end          
           count = count + 1;      
@@ -362,21 +367,27 @@ for i = 1: number_of_on_model_parameters
 %                                
 %                             end
       end
+      
+      if m_identifyer(i) == 12
+          perturbed_offset_or_ramp = Gramp*perturbed_m( m_identifyer == 12);
+          perturbed_offset_or_ramp((end+1):length(d))=0;    % No offset on GPS
+          count = count + 1;   
+      end
      
 %%%%%%%%%%%%%%%%%  %%%%%%%%%%%%%%%%%  %%%%%%%%%%%%%%%%% %%%%%%%%%%%%%%%%% 
 %%%%%%%%%%%%%%%%% Calculate probabilities and ratios %%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%  %%%%%%%%%%%%%%%%%  %%%%%%%%%%%%%%%%% %%%%%%%%%%%%%%%%%
         if strcmp(invert.inversion_type, 'bayesian') == 1 && strcmp(invert.smoothing, 'none') == 1
                 %d_hat = perturbed_G * perturbed_slip;
-                probability_after_perturbation = calc_loglikely(perturbed_slip, d, perturbed_G, inv_sigma_d, perturbed_offset, perturbed_beta);        %  not exp((-1/2) * ( (d - d_hat).' * inv_sigma_d * (d - d_hat) ));
+                probability_after_perturbation = calc_loglikely(perturbed_slip, d, perturbed_G, inv_sigma_d, perturbed_offset_or_ramp, perturbed_beta);        %  not exp((-1/2) * ( (d - d_hat).' * inv_sigma_d * (d - d_hat) ));
                 probability_after_perturbation = (-length(d)/2)*log((2*pi*perturbed_beta^2)) + probability_after_perturbation;
         elseif strcmp(invert.smoothing, 'VK') == 1
                 exponent_VK_after = calc_logprior_VK( perturbed_slip, inv_sigma_s, perturbed_alpha2, n_fault_strands_for_smoothing, first_patch_in_strand_for_smoothing, last_patch_in_strand_for_smoothing);
-                logL_after = calc_loglikely(perturbed_slip, d, perturbed_G, inv_sigma_d, perturbed_offset, perturbed_beta);
+                logL_after = calc_loglikely(perturbed_slip, d, perturbed_G, inv_sigma_d, perturbed_offset_or_ramp, perturbed_beta);
                 probability_after_perturbation = sum((-n_slip_patches_ON_on_each_fault_strand_for_smoothing/2).*log(2*pi*perturbed_alpha2)) + (-length(d)/2)*log((2*pi*perturbed_beta^2)) + sum(exponent_VK_after) + logL_after;     % this is actually the LOG probability. sum over all slip patches.    
         elseif strcmp(invert.smoothing, 'laplacian') == 1
                 exponent_laplacian_after = calc_logprior_laplacian( perturbed_slip, L, perturbed_alpha2, n_fault_strands_for_smoothing, first_patch_in_strand_for_smoothing, last_patch_in_strand_for_smoothing);
-                logL_after = calc_loglikely(perturbed_slip, d, perturbed_G, inv_sigma_d, perturbed_offset, perturbed_beta);
+                logL_after = calc_loglikely(perturbed_slip, d, perturbed_G, inv_sigma_d, perturbed_offset_or_ramp, perturbed_beta);
                 probability_after_perturbation = sum((-n_slip_patches_ON_on_each_fault_strand_for_smoothing/2).*log(2*pi*perturbed_alpha2)) + (-length(d)/2)*log((2*pi*perturbed_beta^2)) + sum(exponent_laplacian_after) + logL_after;              
         elseif strcmp(invert.smoothing, 'minimumnorm') == 1
             logprior_after =  perturbed_alpha2 * (perturbed_slip' * perturbed_slip);
@@ -384,7 +395,7 @@ for i = 1: number_of_on_model_parameters
                 s_curr = perturbed_slip(first_patch_in_strand_for_smoothing(q):last_patch_in_strand_for_smoothing(q));
                 logprior_after(q,1) =  ( -1/(2*perturbed_alpha(q)) * sum((s_curr'*s_curr)));
             end
-            logL_after = calc_loglikely(perturbed_slip, d, perturbed_G, inv_sigma_d, perturbed_offset, perturbed_beta);    
+            logL_after = calc_loglikely(perturbed_slip, d, perturbed_G, inv_sigma_d, perturbed_offset_or_ramp, perturbed_beta);    
             probability_after_perturbation = (-length(d)/2)*log((2*pi*perturbed_beta^2)) + sum(log(2*pi*perturbed_alpha2)) + logL_after + sum(logprior_after);          % matrix matrix. need to keep as a matrix coz the constants out the front are different for multiple faults strands. dont' need to calculate them as long as we work them out separately
         end
 
@@ -440,7 +451,7 @@ end
 % text(ceil(total_n_slip_patches/2),(probability_target+(0.1*probability_target)),'P ratio too big - step sizes will be reduced')
 % text(ceil(total_n_slip_patches/2),(probability_target-(0.1*probability_target)),'P ratio too small - step sizes will be increased')
 % 
-% % % % % % % % % % % % % % % % % % % Plot the diff
+% % % % % % % % % % % % % % % % % % % % Plot the diff
 % figure('position', [300, 300, 1500, 900]);                    % slip, alpha2, rake, dip, offset, beta
 %  bar(1:sum(m_identifyer_master==1), diff(m_identifyer_master==1), 'r');
 %   hold on
@@ -454,12 +465,15 @@ end
 %  if strcmp(invert.solve_for_beta, 'yes') == 1
 %     bar(beta_start_number, diff(m_identifyer_master==6), 'k');
 %  end
+%  if strcmp(invert.solve_for_InSAR_ramp, 'yes') == 1
+%     bar(find(m_identifyer_master==12,1, 'first'):find(m_identifyer_master==12,1, 'last'), diff(m_identifyer_master==12), 'y');
+%  end
 %  legend('slip', 'alpha^2', 'rake', 'offset', 'beta', 'Location', 'northeastoutside');
 %  plot([1,length(m)], [probability_target,probability_target]);
 %  title('diff')
 %  text(ceil(total_n_slip_patches/2),(max(diff)+0.5*max(diff)),'diff positive = step sizes will be increased')
 %  text(ceil(total_n_slip_patches/2),(0.1*min(diff)),'diff negative = step sizes will be reduced')
-
+% 
 % %  % %Prevent step sizes from being too big or too small
 %new_step_sizes(new_step_sizes< 1e-20) = 1e-20;    
 %new_step_sizes(new_step_sizes> 5) = 5;
@@ -468,6 +482,9 @@ end
 % if new_step_sizes(m_identifyer==5) > 0.5
 %     new_step_sizes(m_identifyer==5) = 0.5;  % don't let offset step size get bigger than 0.5
 % end
+
+% Fix offset step size
+new_step_sizes(m_identifyer_master==5) = step_sizes(m_identifyer_master==5);
 
 % Make sure no steps get too small
 new_step_sizes(m_identifyer_master==1 & new_step_sizes < 0.001) = 0.001;

@@ -18,7 +18,7 @@ function [ m_trial ] = do_ensemble_walk_move( m_curr, walkernumber, otherwalkers
 %   otherwalkers = the otherwalkers that are involved in creating a perturbation for the current walker
 %
 %
-% Ruth Amey based on a code by Andy Hooper
+% Ruth Amey (ruthmjamey@gmail.com) based on a code by Andy Hooper
 % 22/1/18
 
 triangle_centre = (((m_curr(:,otherwalkers(1)) + m_curr(:,otherwalkers(2)))/2 ) + m_curr(:,otherwalkers(3)))/2;

@@ -19,6 +19,14 @@ function [ x,y,u,v ] = prepare_plot_rake( rake, slip, spatial_model2, spatial_mo
 % [u,v] = pol2cart(theta, slip);           % slip gives the magnitude of the arrow
 %
 %
+% RUTH LISTEN TO ME - when just using imagesc to plot the slips then
+% DOWNDIP is POSITIVE. this means that theta = rake - 180
+% HOWEVER if you change it so that it's plotting coordinates and the like,
+% if down-dip is NEGATIVE then you need to change it to theta = 180 - rake
+% IF YOU GET CONFUSED ABOUT WHAT I'M TALKING ABOUT THEN CHECK YOUR ORANGE
+% BOOK, monday 17th august
+%
+%
 % find centre of each patch, so you can plot it there
 % x = disloc_model(1,:);
 % y = disloc_model(2,:);

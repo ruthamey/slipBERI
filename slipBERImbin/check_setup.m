@@ -4,11 +4,11 @@
 % R.M.J.Amey 2018
 
 
-figure;
+figure('position', [100, 500, 1800, 700]);
 
 for i= 1: max(InSAR_identifyer)
 
-    subplot(1,max(InSAR_identifyer),i)
+    subplot(2,max(InSAR_identifyer),i)
     hold on;
     if strcmp(data.InSAR_datafile, 'none') ~= 1
         scatter( locs_InSAR(1,InSAR_identifyer==i), locs_InSAR(2,InSAR_identifyer==i), 100, d_InSAR(InSAR_identifyer==i), 'filled');   
@@ -34,13 +34,46 @@ for i= 1: max(InSAR_identifyer)
         end
 
         axis equal
-        colormap('jet')
+        [redbluecmap] = redblue;
+        colormap(flipud(redbluecmap))
+        c = max(abs([min(d_InSAR), max(d_InSAR)])); % Calculate maximu value for symmetric colormap
+        caxis([-c c])
 
         xlabel('UTM x')
         ylabel('UTM y')
         ylabel(colorbar, 'LOS displacement (m)')
+        title([data.InSAR_datafile{i}], 'FontSize', 10);
+        
+%         if data.UTMzone == 50
+%             load coast.mat
+%             coastlong = long;
+%             coastlat = lat;
+%             
+%             coastlong(coastlat<-9) = [];
+%             coastlat(coastlat<-9) = [];
+%             coastlong(coastlat>-8.1) = [];
+%             coastlat(coastlat>-8.1) = [];
+%             
+%             coastlat(coastlong>117) = [];
+%             coastlong(coastlong>117) = [];
+%             coastlat(coastlong<115.8) = [];
+%             coastlong(coastlong<115.8) = [];
+% 
+%             [coastX, coastY]= ll2utm(coastlat,coastlong);
+%             plot(coastX,coastY,'k')
+%         end
 
 end
+
+% And fault
+
+subplot(2,max(InSAR_identifyer),i+1)
+faults = disloc_model; 
+faults(6,:) =  slip_initial; 
+doplot3d(faults', flipud(redblue)); 
+colorbar;
+
+%
 
 if strcmp(testing.testing_mode, 'yes') == 1
     
@@ -62,9 +95,14 @@ if strcmp(testing.testing_mode, 'yes') == 1
         end
 
         axis equal
-        colormap('jet')
+        [redbluecmap] = redblue;
+        colormap(flipud(redbluecmap))
+        c = max(abs([min(los), max(los)])); % Calculate maximu value for symmetric colormap
+        caxis([-c c])
 
         xlabel('UTM x')
         ylabel('UTM y')
     
 end
+
+

@@ -36,9 +36,9 @@ if priors.min_slip > priors.max_slip
    error('you''ve got your permitted min_slip and max_slip values the wrong way round') 
 end
 
-if priors.min_dip > priors.max_dip
-   error('you''ve got your permitted min_dip and max_dip values the wrong way round') 
-end
+%if priors.min_dip > priors.max_dip
+%   error('you''ve got your permitted min_dip and max_dip values the wrong way round') 
+%end
 
 if priors.min_alpha2 > priors.max_alpha2 | priors.min_alpha2 > priors.max_alpha2
    error('you''ve got your permitted min_alpha2 and max_alpha2 values the wrong way round') 
@@ -91,6 +91,15 @@ if strcmp(data.InSAR_datafile, 'none') == 1
     invert.solve_for_InSAR_offset = 'no';
 end
 
+if strcmp(invert.solve_for_InSAR_offset, 'yes') + strcmp(invert.solve_for_InSAR_ramp, 'yes') == 2
+   disp('')
+   disp('Solving for InSAR ramp instead of InSAR offset')
+   disp('invert.solve_for_InSAR_offset changed to no')
+   disp('invert.solve_for_InSAR_ramp left as yes')
+   disp('')
+   invert.solve_for_InSAR_offset = 'no';
+end
+
 if strcmp(data.atolls_datafile, 'none') == 1
     data.atolls_coordinate_unit = [];
 end
@@ -114,24 +123,12 @@ end
 
 
 %% Solving for fault size
-if strcmp(invert.circular_harmonics, 'yes') == 1 && strcmp(invert.solve_for_fault_size, 'no') == 1
-    disp('To solve for the location of a slip patch with circular harmonics');
-    disp(' you need ''invert.solve_for_fault_size'' to be ''yes''.');
-    m=input('I''ve changed this for you, is that okay? Type y or n and hit enter: ','s');
-    if m=='y'
-        invert.solve_for_fault_size = 'yes';
-        disp('Now solving for fault size with circular harmonics');
-    elseif m=='n'
-        keyboard
-    end
-end
-
-if strcmp(invert.solve_for_fault_size, 'yes') == 1 && strcmp(invert.circular_harmonics, 'no') == 1
-    disp('If solving for fault size, you must choose circular harmonics.')
-    disp('So you need ''invert.circular_harmonics'' to be ''yes''.');
-    disp('I''ve changed this for you')
-    invert.circular_harmonics = 'yes';
-end
+% if strcmp(invert.solve_for_fault_size, 'yes') == 1 && strcmp(invert.circular_harmonics, 'no') == 1
+%     disp('If solving for fault size, you must choose circular harmonics.')
+%     disp('So you need ''invert.circular_harmonics'' to be ''yes''.');
+%     disp('I''ve changed this for you')
+%     invert.circular_harmonics = 'yes';
+% end
 
 if strcmp(invert.solve_for_fault_size, 'yes') == 1 && isempty(priors.min_circharm_phi) == 1 || strcmp(invert.solve_for_fault_size, 'yes') == 1 && isempty(priors.max_circharm_phi) == 1 || strcmp(invert.solve_for_fault_size, 'yes') == 1 && isempty(priors.max_circharm_coeffs) == 1 || strcmp(invert.solve_for_fault_size, 'yes') == 1 && isempty(priors.min_circharm_coeffs) == 1 || strcmp(invert.solve_for_fault_size, 'yes') == 1 && isempty(priors.min_circharm_center) == 1 || strcmp(invert.solve_for_fault_size, 'yes') == 1 && isempty(priors.max_circharm_center) == 1
    error('Circharm priors cannot be empty') 

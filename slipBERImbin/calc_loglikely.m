@@ -37,7 +37,7 @@ if length(offset) == 0
    offset = zeros( length(d),1); 
 end
 
-exponent = (-0.5 * (1/beta^2) * ((d-G*slip)+offset)' * inv_sigma_d * ((d-G*slip)+offset) );
+exponent = (-0.5 * (1/beta^2) * (d-(G*slip+offset))' * inv_sigma_d * (d-(G*slip+offset)));
 
 if isnan(exponent)
     disp('DANGER: A rogue NaN has been located in calc_loglikely')

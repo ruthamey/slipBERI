@@ -80,6 +80,7 @@
 %           step_size = Value. Maximum stepsize, plus or minus, allowed in your random walk when generating a slip_trial, for Bayesian inversions. This is used initially and then is adjusted through the iteration llh2local. For 'invert.slip_prior = boxcar', step_size is in metres. For 'invert.slip_perior = logarithmic' it's like a percentage of slip, or something.
 %           variable_rake = String. 'yes' or 'no'
 %           solve_for_InSAR_offset: String. 'no' or 'yes'
+%           solve_for_InSAR_ramp: String. 'no' or 'yes'
 %           regularise_moment = String. 'yes' or 'no'. This adds an M0 prior likelihood - a normal distribution, with mean and std given in 'data' structure. 
 %           alpha2_initial = Number. One number for each fault strand, of initial alpha^2 (variance) value. This is adjusted through the iteration.
 %           alpha2_step_size = Number. Initial step size of alpha2_modelparameter, which is then adjusted through the inversion.
@@ -144,7 +145,7 @@
 
 % 'Date, initial, details' if you please. Let's keep it tidy in here.
 
-% deets: rmja (eermja@leeds.ac.uk / ruthmjamey@gmail.com)
+% deets: rmja (R.M.J.Amey@leeds.ac.uk)
 
 %  18-nov-2014  rmja  Started writing
 %  26-feb-2015  rmja  Code actually ran the whole way through
@@ -183,6 +184,7 @@
 %    27-mar-2018  rmja  Tidied code and fixed all the archaeic nonsense, lurking in subfunctions
 %    22-may-2018  rmja  Solving for correlation lenghts a_as and a_dd from their distributions, when solving for fault size.
 %    15-jan-2019  rmja  Tidied significantly for github
+%    20-jan-2019  rmja  Added solving for ramp
 
 %% Sort out some matrices. 
 % These are half-coded options that I don't want to advertise and make 
@@ -196,7 +198,7 @@ invert.solve_for_dip = 'no';                % String. 'yes' or 'no' to solve for
 invert.select_patches = 'no';               % String. The name of the matlab file that contains the numbers of which slip patches you wish to be 'on' during this inversion.
 invert.ensemble_sampling = 'no';            % String. 'yes' or 'no' for whether you want to explore parameter space using ensemble sampling, rather than adding a random number to the model parameters.
 invert.ensemble_move_type = [];             % String. If using ensemble sampling you can choose whether you wish to use the 'stretch' or 'walk' method of doing so.
-invert.solve_for_correlation_length = 'no'; % String. 'yes' or 'no'. This is the option to solve for the along-strike and down-dip correlation terms for VK smoothed solutions.
+invert.solve_for_correlation_length = 'no'; % String. 'yes' or 'no'. This is the option to solve for the along-strike and down-dip correlation terms for VK smoothed solution
 
 % Testing model, used to make the synthetic tests in Amey et al. 2018. 
 % They require a very specific set-up, which I have not provided, so I have
@@ -228,7 +230,8 @@ tic
 % *********** % ************ % ********** % ********** % ********** % *****
 disp(' ');
 disp('Now running slipBERI - the distributed slip inversion code with fractal regularisation');
-disp('by Ruth Amey and Andy Hooper (COMET, University of Leeds');
+disp('by Ruth Amey and Andy Hooper (COMET, University of Leeds)');
+disp('Check for updates at https://github.com/ruthamey/slipBERI');
 disp(' ')
 
 rng('shuffle')      % Fun fact - if you don't set your rng to shuffle then every time you open matlab fresh it'll give you the same random numbers in a row. Try it - I bet you £50 if you open a new matlab and type 'rand' you'll get 0.8147
@@ -456,12 +459,12 @@ spatial_model3column = reshape(spatial_model3, [],1);
 % Since we're not solving for dip at the moment...
 
 % %Save for GMT
-% fault_coords_latlong = [];
-% for i = 1:n_fault_strands
-%     [LAT,LON]=utm2ll([fault_coords(i,1), fault_coords(i,3)],[fault_coords(i,2), fault_coords(i,4)],data.UTMzone); 
-%     fault_coords_latlong = [fault_coords_latlong; (LON)', LAT'];
-% end
-% dlmwrite('fault_coords_latlong.gmt', fault_coords_latlong);
+fault_coords_latlong = [];
+for i = 1:n_fault_strands
+    [LAT,LON]=utm2ll([fault_coords(i,1), fault_coords(i,3)],[fault_coords(i,2), fault_coords(i,4)],data.UTMzone); 
+    fault_coords_latlong = [fault_coords_latlong; (LON)', LAT'];
+end
+dlmwrite('fault_coords_latlong.gmt', fault_coords_latlong);
 
 % Start with some easy thing
 %total_n_slip_patches = n_along_strike_patches' * n_down_dip_patches;                     % this works even if you have multiple fault strands
@@ -1060,6 +1063,10 @@ if strcmp(invert.inversion_type, 'bayesian') == 1                         %bayes
         if strcmp(invert.solve_for_InSAR_offset, 'yes') == 1
             n_model_parameters = n_model_parameters + n_InSAR_scenes;           % If solving for InSAR offset 
         end
+         
+        if strcmp(invert.solve_for_InSAR_ramp, 'yes') == 1
+           n_model_parameters = n_model_parameters + n_InSAR_scenes*3;
+        end
 
         if strcmp(invert.solve_for_beta, 'yes') == 1               % If solving for beta (and not setting it at an initial value of 1 and not changing it through the inversion)
             n_model_parameters = n_model_parameters + 1;
@@ -1290,7 +1297,7 @@ if strcmp(invert.inversion_type, 'bayesian') == 1                         %bayes
                 offset_initial = [offset_initial; zeros(sum(d_identifyer==2), nwalkers)];   % zeros on bottom for GPS
             end
         elseif strcmp(invert.ensemble_sampling, 'no')==1
-            offset_step_size_initial = 0.01*ones(n_InSAR_scenes,1);    %meters
+            offset_step_size_initial = 0.001*ones(n_InSAR_scenes,1);    %meters
             offset_modelparameter_initial = invert.offset_initial*ones(n_InSAR_scenes,1);
             offset_initial(d_identifyer==1,:) = invert.offset_initial*ones(sum(d_identifyer==1), nwalkers);       % one row per InSAR dataset, one column per walker number
             offset_initial = [offset_initial; zeros(sum(d_identifyer==2), nwalkers)];   % zeros on bottom for GPS
@@ -1298,6 +1305,33 @@ if strcmp(invert.inversion_type, 'bayesian') == 1                         %bayes
     else
         offset_modelparameter_initial = []; 
         offset_initial = []; 
+    end
+    
+    if strcmp(invert.solve_for_InSAR_ramp, 'yes') == 1
+         ramp_step_size_initial = [];
+         for q = 1: n_InSAR_scenes
+             ramp_step_size_initial = [ramp_step_size_initial; 0.005/max(locs_InSAR(1,InSAR_identifyer==q)); 0.005/max(locs_InSAR(2,InSAR_identifyer==q)); 0.005];
+         end
+         ramp_modelparameter_initial = zeros(n_InSAR_scenes*3,1);
+        ramp_initial(d_identifyer==1,:) = zeros(sum(d_identifyer==1), nwalkers);       % one row per InSAR dataset, one column per walker number
+        ramp_initial = [ramp_initial; zeros(sum(d_identifyer==2), nwalkers)];   % zeros on bottom for GPS
+        rampxy=llh2local([locs_InSAR_latlong(1,:); locs_InSAR_latlong(2,:); zeros(1,length(locs_InSAR_latlong(1,:)))],data.origin);
+        Gramp = [];
+        for q = 1: n_InSAR_scenes
+            %Gramptemp = [locs_InSAR(1,InSAR_identifyer==q)', locs_InSAR(2,InSAR_identifyer==q)', ones(length(d(InSAR_identifyer==q)),1)];
+            Gramptemp = [rampxy(1,InSAR_identifyer==q)', rampxy(2,InSAR_identifyer==q)', ones(length(rampxy(InSAR_identifyer==q)),1)];
+            Gramp = blkdiag(Gramp, Gramptemp);
+        end
+        clear Gramptemp;
+        max_ramp = 0.1*ones(length(ramp_modelparameter_initial),1);
+        min_ramp = -max_ramp;
+    else
+        ramp_modelparameter_initial = [];
+        ramp_initial = [];
+        max_ramp = [];
+        min_ramp = [];
+        ramp_step_size_initial = [];
+        Gramp = [];
     end
 
     % Sort out G matrix for solving for dip.................................... 
@@ -1696,23 +1730,23 @@ if strcmp(invert.inversion_type, 'bayesian') == 1                         %bayes
     
 
     % Set up m matrices
-    % 1 = slip, 2 = alpha^2, 3 = rake, 4 = dip, 5 = offset, 6 = beta, 7 = circhram coeffs, 8 = circharm phi, 9 = circharm centre, 10 = a_as model parameter, 11 = a_dd model parameter
-    m_initial = [slip_initial; alpha2_modelparameter_initial; rake_initial; dip_initial; offset_modelparameter_initial; beta_initial; circharm_coeffs_initial; circharm_phi_initial; circharm_center_initial; a_as_modelparameter_initial; a_dd_modelparameter_initial];    % Rows = model parameters, Columns = walkers
+    % 1 = slip, 2 = alpha^2, 3 = rake, 4 = dip, 5 = insar offset, 6 = beta, 7 = circhram coeffs, 8 = circharm phi, 9 = circharm centre, 10 = a_as model parameter, 11 = a_dd model parameter, 12 = insar ramp
+    m_initial = [slip_initial; alpha2_modelparameter_initial; rake_initial; dip_initial; offset_modelparameter_initial; beta_initial; circharm_coeffs_initial; circharm_phi_initial; circharm_center_initial; a_as_modelparameter_initial; a_dd_modelparameter_initial; ramp_modelparameter_initial];    % Rows = model parameters, Columns = walkers
     m_curr = m_initial;
     m_trial = m_curr(:,1);
-    m_identifyer_master = [ 1* ones(size(slip_initial,1),1); 2*ones(size(alpha2_modelparameter_initial,1),1); 3*ones(size(rake_initial,1),1); 4*ones(size(dip_initial,1),1); 5*ones(size(offset_modelparameter_initial,1),1); 6*ones(size(beta_initial,1),1); 7*ones(size(circharm_coeffs_initial,1),1); 8*ones(size(circharm_phi_initial,1),1); 9*ones(size(circharm_center_initial,1),1); 10*ones(size(a_as_modelparameter_initial,1),1); 11*ones(size(a_dd_modelparameter_initial,1),1)];
-    m_max = [max_slip; max_alpha2modelparameter; max_rake; max_dip; max_offset; max_beta; max_circharm_coeffs; max_circharm_phi; max_circharm_center; max_a_as_modelparameter; max_a_dd_modelparameter];
-    m_min = [min_slip; min_alpha2modelparameter'; min_rake; min_dip; min_offset; min_beta; min_circharm_coeffs; min_circharm_phi; min_circharm_center; min_a_as_modelparameter; min_a_dd_modelparameter];
+    m_identifyer_master = [ 1* ones(size(slip_initial,1),1); 2*ones(size(alpha2_modelparameter_initial,1),1); 3*ones(size(rake_initial,1),1); 4*ones(size(dip_initial,1),1); 5*ones(size(offset_modelparameter_initial,1),1); 6*ones(size(beta_initial,1),1); 7*ones(size(circharm_coeffs_initial,1),1); 8*ones(size(circharm_phi_initial,1),1); 9*ones(size(circharm_center_initial,1),1); 10*ones(size(a_as_modelparameter_initial,1),1); 11*ones(size(a_dd_modelparameter_initial,1),1); 12*ones(size(ramp_modelparameter_initial,1),1)];
+    m_max = [max_slip; max_alpha2modelparameter; max_rake; max_dip; max_offset; max_beta; max_circharm_coeffs; max_circharm_phi; max_circharm_center; max_a_as_modelparameter; max_a_dd_modelparameter; max_ramp];
+    m_min = [min_slip; min_alpha2modelparameter'; min_rake; min_dip; min_offset; min_beta; min_circharm_coeffs; min_circharm_phi; min_circharm_center; min_a_as_modelparameter; min_a_dd_modelparameter; min_ramp];
     if strcmp(invert.ensemble_sampling, 'no') == 1
-        step_sizes = [patch_step_sizes_initial; alpha2_step_size_initial; rake_step_size_initial; dip_step_size_initial; offset_step_size_initial; beta_step_size_initial; circharm_coeffs_step_size_initial;  circharm_phi_step_size_initial; circharm_center_step_size_initial; a_as_step_size; a_dd_step_size];
+        step_sizes = [patch_step_sizes_initial; alpha2_step_size_initial; rake_step_size_initial; dip_step_size_initial; offset_step_size_initial; beta_step_size_initial; circharm_coeffs_step_size_initial;  circharm_phi_step_size_initial; circharm_center_step_size_initial; a_as_step_size; a_dd_step_size; ramp_step_size_initial];
         %step_sizes_master = step_sizes;
     end
     m_identifyer = m_identifyer_master;     % If not solving for fault size, they will always be equal to each other. But if we remove patches, this will be updated
     circharmparameters = zeros(n_model_parameters,1);                       % Same length as the number of model parameters that are on
     circharmparameters(m_identifyer==7|m_identifyer==8|m_identifyer==9|m_identifyer==10|m_identifyer==11) = 1;
-    m_on = [onoffidentifyer; ones(n_fault_strands_for_smoothing,1); onoffidentifyer; ones(size(dip_initial,1),1); ones(size(offset_modelparameter_initial,1),1); ones(size(beta_initial,1),1); ones(sum(circharmparameters), 1)];
+    m_on = [onoffidentifyer; ones(n_fault_strands_for_smoothing,1); onoffidentifyer; ones(size(dip_initial,1),1); ones(size(offset_modelparameter_initial,1),1); ones(size(beta_initial,1),1); ones(sum(circharmparameters), 1); ones(size(ramp_modelparameter_initial,1),1)];
     m_on_keep(:, 1) = m_on;
-     mcircharmfreeze = m_initial(circharmparameters==1);
+    mcircharmfreeze = m_initial(circharmparameters==1);
     
     % Calculate probabilities for initial slip distribution - this is so your first trial has a previous 'curr' to compare to 
     singularflag = 0;
@@ -1742,26 +1776,32 @@ if strcmp(invert.inversion_type, 'bayesian') == 1                         %bayes
            
            % Preallocate some space so the inversion takes less time
            store_number = size(slip_keep,2);    % Need to add to the end of the matrixes. but some may have been removed from the burn-in
-           rake_keep(:,(store_number+1:store_number+iterations)) = 0;
+           m_keep(:,(store_number+1:store_number+iterations)) = 0;
            logL_keep(:,(store_number+1:store_number+iterations)) = 0;
+           logprior_keep(:,(store_number+1:store_number+iterations)) = 0;
            M0_keep(1,(store_number+1:store_number+iterations)) = 0;
            M0_likelihood_keep(1,(store_number+1:store_number+iterations)) = 0;
-           slip_keep(:, (store_number+1:store_number+iterations)) = 0;             % One column for each iteration, containing slip values for each patch (number of rows = number of slip patches)
            logposterior_keep(1,(store_number+1:store_number+iterations)) = 0;  % One column for each iteration, containing posterior for each patch (number of rows = number of slip patches) THIS ISN'T RIGHT FOR MULTIPLE FAULT STRANDS so I've commented it out .
            if strcmp(invert.smoothing, 'none') == 1
                ratio_keep((store_number+1:store_number+iterations),1) = 0;
            end
-           if strcmp(invert.smoothing, 'VK') == 1
-               alpha2_keep(:,(store_number+1:store_number+iterations)) = 0;     % One column for each iteration, containing alpha2_squared value for each iteration
-%                if strcmp(invert.solve_for_correlation_length, 'yes') == 1
-%                    a_as_keep(1:n_fault_strands_for_smoothing,(store_number+1:store_number+iterations)) = 0;
-%                    a_dd_keep(1:n_fault_strands_for_smoothing,(store_number+1:store_number+iterations)) = 0;
-%                end
-           end
-           if strcmp(invert.solve_for_InSAR_offset, 'yes') == 1
-               offset_keep(:,(store_number+1:store_number+iterations)) = 0;
-           end
-           
+%            if strcmp(invert.smoothing, 'VK') == 1
+%                alpha2_keep(:,(store_number+1:store_number+iterations)) = 0;     % One column for each iteration, containing alpha2_squared value for each iteration
+% %                if strcmp(invert.solve_for_correlation_length, 'yes') == 1
+% %                    a_as_keep(1:n_fault_strands_for_smoothing,(store_number+1:store_number+iterations)) = 0;
+% %                    a_dd_keep(1:n_fault_strands_for_smoothing,(store_number+1:store_number+iterations)) = 0;
+% %                end
+%            end
+%            if strcmp(invert.solve_for_InSAR_offset, 'yes') == 1
+%                offset_keep(:,(store_number+1:store_number+iterations)) = 0;
+%            end
+%            
+%            if strcmp(invert.solve_for_InSAR_ramp, 'yes') == 1
+%                ramp_keep(:,(store_number+1:store_number+iterations)) = 0;
+%            end
+%            %rake_keep(:,(store_number+1:store_number+iterations)) = 0;
+%            %slip_keep(:, (store_number+1:store_number+iterations)) = 0;             % One column for each iteration, containing slip values for each patch (number of rows = number of slip patches)
+           invert.simulated_annealing_start = 'no';
            housekeeping.save_name = ['loadoldchain', housekeeping.save_name];
     end
 
@@ -1797,6 +1837,7 @@ if strcmp(invert.inversion_type, 'bayesian') == 1                         %bayes
     if strcmp(invert.simulated_annealing_start, 'yes') == 1
         
         disp('Performing simulated annealing to find best start values.')
+        disp('Note this only works for von Karman smoothed inversion.')
         
         % Initial values
         m_simulatedannealing = m_initial(m_identifyer ~= 7 & m_identifyer ~= 8 & m_identifyer ~= 9 & m_identifyer ~= 10 & m_identifyer ~= 11);  % not trying to solve for circ harmonic parameters
@@ -2233,7 +2274,7 @@ end
 
         for ii = 1: nwalkers
 
-            store_number = store_number+1;  % this is different from i, in the case of ensemble sampling
+            store_number = store_number+1;  % this is different from i, in the case of ensemble sampling, or if we've loaded an old fault chain
             
             % Either perturb the paramterisation . . .            
             if strcmp(invert.solve_for_fault_size, 'yes') == 1 && store_number >= faultsizechangestart && rem(store_number,faultsizechangefreq) == 0 || strcmp(invert.solve_for_fault_size, 'yes') == 1 && faultsizechangestart == 1 && store_number == 1   % Update which patches are on and off, at chosen frequency, once left burn in
@@ -2292,13 +2333,18 @@ end
             if strcmp(invert.solve_for_InSAR_offset, 'yes') == 1
                 offset_modelparameter_temp = m_trial(m_identifyer_master==5);
                 for q = 1:n_InSAR_scenes
-                    offset_temp(InSAR_identifyer==q,1) = offset_modelparameter_temp(q);
+                    offset_or_ramp_temp(InSAR_identifyer==q,1) = offset_modelparameter_temp(q);
                 end
-                offset_temp((end+1):length(d))=0;    % No offset on GPS
+                offset_or_ramp_temp((end+1):length(d))=0;    % No offset on GPS
+            % or ramp
+            elseif strcmp(invert.solve_for_InSAR_ramp, 'yes') == 1
+                ramp_modelparameters_temp = m_trial(m_identifyer_master==12);
+                offset_or_ramp_temp = Gramp*ramp_modelparameters_temp;
+                offset_or_ramp_temp((end+1):length(d))=0;    % No offset on GPS
             else
-                offset_temp = zeros( length(d), 1);
+                offset_or_ramp_temp = zeros( length(d), 1);
             end
-                        
+           
             % Recalculate G_ss and G_ds, if solving for dip
             if strcmp(invert.solve_for_dip, 'yes') == 1
                 G_ss_temp(:, first_patch_in_strand(k):last_patch_in_strand(k)) = interp3(1:n_slip_patches_on_each_fault_strand(k), 1:n_data, dip_LUT, G_ss(:,first_patch_in_strand(k):last_patch_in_strand(k),:), 1:n_slip_patches_on_each_fault_strand(k), 1:n_data, m_trial(m_identifyer==4));
@@ -2324,7 +2370,7 @@ end
                 for n = 1:n_fault_strands_for_smoothing
                     n_slip_patches_ON_on_each_fault_strand_for_smoothing(n,1) = sum(onoffidentifyer(first_patch_in_strand_for_smoothing_master(n):last_patch_in_strand_for_smoothing_master(n),1));
                 end
-                n_slip_patches_ON_on_each_fault_strand_for_smoothing_save(i/faultsizechangefreq) = n_slip_patches_ON_on_each_fault_strand_for_smoothing;
+                n_slip_patches_ON_on_each_fault_strand_for_smoothing_save(store_number/faultsizechangefreq) = n_slip_patches_ON_on_each_fault_strand_for_smoothing;
                 first_patch_in_strand_for_smoothing(1) = 0;
                 first_patch_in_strand_for_smoothing(2:(n_fault_strands_for_smoothing+1),1) = cumsum(n_slip_patches_ON_on_each_fault_strand_for_smoothing);
                 first_patch_in_strand_for_smoothing = first_patch_in_strand_for_smoothing+1;
@@ -2418,7 +2464,7 @@ end
                 
                 det_sigma_s_keep(:,faultsizecount) = det_sigma_s;
                 det_sigma_s_ratio = prod((det_sigma_s_keep(:,faultsizecount)/det_sigma_s_keep(:,faultsizecount-1))^(-0.5));   % But we only need to calculate this for the change between n patches being on and m patches being on. once a trial is accepted, m patches will remain on for the next 1000 iterations. so once a trial is accepted we need to set this back to 1
-                m_on = [onoffidentifyer; ones(n_fault_strands_for_smoothing,1); onoffidentifyer; ones(size(dip_initial,1),1); ones(size(offset_modelparameter_initial,1),1); ones(size(beta_initial,1),1); ones(sum(circharmparameters), 1)];
+                m_on = [onoffidentifyer; ones(n_fault_strands_for_smoothing,1); onoffidentifyer; ones(size(dip_initial,1),1); ones(size(offset_modelparameter_initial,1),1); ones(size(beta_initial,1),1); ones(sum(circharmparameters), 1); ones(size(ramp_modelparameter_initial,1),1)];
                 m_identifyer = m_identifyer_master;
                 m_identifyer(m_on==0) = [];  % Remove appropriate slip and rake rows from m_identifyer
                 m_on_keep(:,faultsizecount) = m_on;
@@ -2539,7 +2585,7 @@ end
                     end
                     
                     % Calculate the likelihood
-                    logL_trial = calc_loglikely(m_trial(m_identifyer==1), d, G_temp, inv_sigma_d, offset_temp, m_trial(m_identifyer==6) );
+                    logL_trial = calc_loglikely(m_trial(m_identifyer==1), d, G_temp, inv_sigma_d, offset_or_ramp_temp, m_trial(m_identifyer==6) );
                     likelihood_ratio = beta_ratio * exp( logL_trial - logL_curr(:,ii));
                     
                     % MCMC Step 2 - Sampling the posterior (using the likelihood)
@@ -2594,7 +2640,7 @@ end
                 
                 % Store. Either the updated trial or the previous trial. We store the 'curr' values - so this will either be the updated curr if a trial was accepted, or it will be the same as the previous iteration if the trial was rejected.
                 if ii == nwalkers
-                   m_keep(m_on==1,i,:) = m_curr(m_on==1);      % On patches saved, the rest becomes 0 (both slip and rake)
+                   m_keep(m_on==1,store_number,:) = m_curr(m_on==1);      % On patches saved, the rest becomes 0 (both slip and rake)
                    %m_keep(m_on==0,i,:)=0;
                 end
                 if strcmp(invert.solve_for_fault_size, 'yes') == 1
@@ -2698,7 +2744,7 @@ end
                     
                     % Calculate new step sizes
                     if singularflag == 0 & i < 10000           % only do step sizes test if current matrix isn't singular, if changing faultsize
-                        [new_step_sizes] = calculate_step_sizes( m_curr, total_n_slip_patches, invert, G_sensitivity_test, d, inv_sigma_d, inv_sigma_s_master, step_sizes, probability_target, G_ss_curr, G_ds_curr, n_fault_strands, n_fault_strands_for_smoothing, n_slip_patches_on_each_fault_strand, first_patch_in_strand, last_patch_in_strand, first_patch_in_strand_for_smoothing_master, last_patch_in_strand_for_smoothing_master, det_sigma_s, L, M0_likelihood_curr, elastic_params, spatial_model2, spatial_model3, data , m_identifyer_master, G_ss, G_ds, dip_LUT, n_data, fault_strand_identifyer, priors.min_dip, priors.max_dip, onoffidentifyer, n_slip_patches_ON_on_each_fault_strand_for_smoothing, n_slip_patches_on_each_fault_strand_for_smoothing, d_identifyer, patchx, patchz, disloc_model, n_down_dip_patches_for_smoothing, n_along_strike_patches_for_smoothing, along_strike_sep_dist, n_along_strike_patches, n_down_dip_patches, fault_strand_togetherness, H,first_patch_in_strand_for_smoothing,last_patch_in_strand_for_smoothing, fault_length_for_smoothing, fault_width_for_smoothing, InSAR_identifyer, n_harmonics, predominant_faulting_style, priors, n_InSAR_scenes, m_on, circharmparameters);
+                        [new_step_sizes] = calculate_step_sizes( m_curr, total_n_slip_patches, invert, G_sensitivity_test, d, inv_sigma_d, inv_sigma_s_master, step_sizes, probability_target, G_ss_curr, G_ds_curr, n_fault_strands, n_fault_strands_for_smoothing, n_slip_patches_on_each_fault_strand, first_patch_in_strand, last_patch_in_strand, first_patch_in_strand_for_smoothing_master, last_patch_in_strand_for_smoothing_master, det_sigma_s, L, M0_likelihood_curr, elastic_params, spatial_model2, spatial_model3, data , m_identifyer_master, G_ss, G_ds, dip_LUT, n_data, fault_strand_identifyer, priors.min_dip, priors.max_dip, onoffidentifyer, n_slip_patches_ON_on_each_fault_strand_for_smoothing, n_slip_patches_on_each_fault_strand_for_smoothing, d_identifyer, patchx, patchz, disloc_model, n_down_dip_patches_for_smoothing, n_along_strike_patches_for_smoothing, along_strike_sep_dist, n_along_strike_patches, n_down_dip_patches, fault_strand_togetherness, H,first_patch_in_strand_for_smoothing,last_patch_in_strand_for_smoothing, fault_length_for_smoothing, fault_width_for_smoothing, InSAR_identifyer, n_harmonics, predominant_faulting_style, priors, n_InSAR_scenes, m_on, circharmparameters, Gramp);
                     end
                     %new_step_sizes = step_sizes;
                     step_sizes_keep(:, sens_test_number) = new_step_sizes;
@@ -2768,6 +2814,9 @@ end
         circharm_coeffs_keep = m_keep(m_identifyer_master==7,:,:);
         circharm_phi_keep = m_keep(m_identifyer_master==8,:,:);
         circharm_center_keep = m_keep(m_identifyer_master==9,:,:);
+        % correlation length
+        % correlation length
+        ramp_keep = m_keep(m_identifyer_master==12,:,:);
         
         % Expand matrices if doing ensemble_sampling
         if strcmp(invert.ensemble_sampling, 'yes') == 1
@@ -2783,7 +2832,10 @@ end
             if strcmp(invert.solve_for_InSAR_offset, 'yes') == 1
                 offset_keep = reshape(offset_keep, [n_InSAR_scenes, (size(offset_keep,2)*size(offset_keep,3))]);
             end
-            if strcmp(invert.solve_for_fault_size, 'yes') == 1;
+            if strcmp(invert.solve_for_InSAR_ramp, 'yes') == 1
+                ramp_keep = reshape(ramp_keep, [n_InSAR_scenes, (size(offset_keep,2)*size(offset_keep,3))]);
+            end
+            if strcmp(invert.solve_for_fault_size, 'yes') == 1
                 circharm_coeffs_keep = reshape(circharm_coeffs_keep, [nharmonics, (size(circharm_coeffs_keep,2)*size(circharm_coeffs_keep,3))]);
                 circharm_phi_keep = reshape(circharm_phi_keep, [nharmonics-1, (size(circharm_phi_keep,2)*size(circharm_phi_keep,3))]);
                 circharm_center_keep = reshape(circharm_center_keep, [2, (size(circharm_center_keep,2)*size(circharm_center_keep,3))]);
@@ -2802,7 +2854,7 @@ inversion_time = toc;
 
 %% Save everything - in case display_result doesn't run proper
 
-savename = [housekeeping.save_name, '_', num2str(n_down_dip_patches_for_smoothing(1)), 'x', num2str(n_along_strike_patches_for_smoothing(1)), '_', invert.smoothing, 'smooth_', invert.solve_for_dip, 'dip_', num2str(invert.iterations), '_', invert.regularise_moment, 'M0reg_', priors.slip_prior, '_', invert.solve_for_fault_size, 'patchesonoff'];            
+savename = ['withburnin', housekeeping.save_name, '_', num2str(n_down_dip_patches_for_smoothing(1)), 'x', num2str(n_along_strike_patches_for_smoothing(1)), '_', invert.smoothing, 'smooth_', invert.solve_for_dip, 'dip_', num2str(invert.iterations), '_', invert.regularise_moment, 'M0reg_', priors.slip_prior, '_', invert.solve_for_fault_size, 'patchesonoff'];            
 
 
 %save(savename);
@@ -2951,7 +3003,7 @@ p = profile('info'); % if you wanna view the profile, do >> profview(0,p)
 
 %% Save everything again now you've calculated more things
 
-savename = [housekeeping.save_name, '_', num2str(n_down_dip_patches_for_smoothing(1)), 'x', num2str(n_along_strike_patches_for_smoothing(1)), '_', invert.smoothing, 'smooth_', invert.solve_for_dip, 'dip_', num2str(invert.iterations), '_', invert.regularise_moment, 'M0reg_', priors.slip_prior, '_', invert.solve_for_fault_size, 'patchesonoff'];            
+savename = ['withburnin', housekeeping.save_name, '_', num2str(n_down_dip_patches_for_smoothing(1)), 'x', num2str(n_along_strike_patches_for_smoothing(1)), '_', invert.smoothing, 'smooth_', invert.solve_for_dip, 'dip_', num2str(invert.iterations), '_', invert.regularise_moment, 'M0reg_', priors.slip_prior, '_', invert.solve_for_fault_size, 'patchesonoff'];            
 
 %save(savename);
 save(savename, '-v7.3');
@@ -2990,6 +3042,17 @@ switch a
 		disp('And with that, I''ll be off then.');
 end
 
+disp('   ')
+disp('IMPORTANT: no burn in has been removed.')
+disp('Using the probability plot and the histograms, decide how much burn in to remove')
+disp('Set number of iterations to remove to burn_in_remove_number in the terminal')
+disp('Then run script ''remove_burn_in'' in the terminal')
+disp('e.g.')
+disp('   ')
+disp('burn_in_remove_number = 10000')
+disp('remove_burn_in')
+disp('   ')
+disp('IMPORTANT: remove burn in now!')
 disp('   ')
 disp('Keyboard mode now. To terminate keyboard mode and end the slipBERI function, type ''dbcont'' and press Enter')
 keyboard

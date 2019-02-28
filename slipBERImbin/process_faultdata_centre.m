@@ -26,7 +26,7 @@ function [disloc_model, spatial_model1, spatial_model2, spatial_model3, spatial_
 % spatial_model4 - identifyer. I don't use this, but I think this is if you want to do layered earth model, so different elastic parameters with depth
 % seg_coords - coordinates of fault. fault segment end coordinates x,y,x,y. One row per fault strand.
 %
-% From gfj, hacked by rmja
+% nicked from gfj, hacked by rmja
 
 % input data file
 %  input_filename

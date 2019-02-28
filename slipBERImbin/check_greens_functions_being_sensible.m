@@ -4,9 +4,13 @@
 %
 % R.M.J.Amey 2018
 
-
     slip_curr = m_curr(m_identifyer==1);
-    offset_curr = zeros(length(d),1);
+    
+%     if strcmp(invert.solve_for_InSAR_ramp, 'yes') == 1 || strcmp(invert.solve_for_InSAR_offset, 'yes') == 1
+%         offset_curr = offset_or_ramp_temp;
+%     else
+%         offset_curr = zeros(length(d),1);
+%     end
     
     figure('position', [100, 350, 1800, 600])
     ax1 = subplot(1,3,1);
@@ -59,11 +63,10 @@
 %         G = G;
 %     end  
     
-    d_hat =  (G * slip_curr) + offset_curr;
+    d_hat =  (G * slip_curr) + offset_or_ramp_temp;
     
     subplot(1,3,2); hold on;
     title('Data');
-    %ylabel('UTM y')
     
     if strcmp(data.InSAR_datafile, 'none') ~= 1    
         scatter( locs_InSAR(1,:), locs_InSAR(2,:), [], d_hat(1:length(locs_InSAR)), 'filled')
@@ -108,8 +111,6 @@
             
         end 
 
-    %xlabel('UTM x')
-    %ylabel('UTM y, I think')
     title('Model (MAP)');
 
     
@@ -158,20 +159,28 @@
             plot(x, y, 'm', 'Linewidth', 2)
     end
 
-    %xlabel('UTM x, I think')
-    %ylabel('UTM y, I think')
     title('Residuals');
 
     % Make sure all colorbars are same scale, only display on RHS
-    MaxC = max( [max(d_InSAR), max(d_hat(1:length(locs_InSAR))), max(residuals(1:length(locs_InSAR)))]);  % max colour is max InSAR value - ignore GPS arrows
-    MinC = min( [min(d_InSAR), min(d_hat(1:length(locs_InSAR))), min(residuals(1:length(locs_InSAR)))]);  % max colour is max InSAR value - ignore GPS arrows
-    subplot(1,3,1); caxis([ MinC MaxC]); colorbar('off');
-    subplot(1,3,2); caxis([ MinC MaxC]); colorbar('off');
-    subplot(1,3,3); caxis([ MinC MaxC]);
+    
+    c = max(abs([min(d_InSAR), max(d_InSAR)])); % Calculate maximu value for symmetric colormap
+    caxis([-c c])
+    
+    
+    %MaxC = max( [max(d_InSAR), max(d_hat(1:length(locs_InSAR))), max(residuals(1:length(locs_InSAR)))]);  % max colour is max InSAR value - ignore GPS arrows
+    %MinC = min( [min(d_InSAR), min(d_hat(1:length(locs_InSAR))), min(residuals(1:length(locs_InSAR)))]);  % max colour is max InSAR value - ignore GPS arrows
+    %subplot(1,3,1); caxis([ MinC MaxC]); colorbar('off');
+    %subplot(1,3,2); caxis([ MinC MaxC]); colorbar('off');
+    %subplot(1,3,3); caxis([ MinC MaxC]);
+    subplot(1,3,1); caxis([ -c c]); colorbar('off');
+    subplot(1,3,2); caxis([ -c c]); colorbar('off');
+    subplot(1,3,3); caxis([ -c c]);
     if strcmp(data.GPS_datafile, 'none') ~= 1
         ylabel(colorbar, 'LOS displacement (m)')    % note that GPS has been projected into LOS
     end
-    colormap('hsv')
+    %colormap('hsv')
+    [redbluecmap] = redblue;
+    colormap(flipud(redbluecmap))
     if strcmp(data.atolls_datafile, 'none') ~= 1;
         ylabel(colorbar, 'vertical displacement (m)')    % note that GPS has been projected into LOS
     end

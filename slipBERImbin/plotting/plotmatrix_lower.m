@@ -1,4 +1,4 @@
-function [h,ax,BigAx,patches,pax,cc] = plotmatrix_lower_david(varargin)
+function [h,ax,BigAx,patches,pax,cc] = plotmatrix_lower(varargin)
 %PLOTMATRIX_LOWER Scatter plot matrix.
 %   PLOTMATRIX(X,Y) scatter plots the columns of X against the columns
 %   of Y.  If X is P-by-M and Y is P-by-N, PLOTMATRIX will produce a
@@ -245,7 +245,7 @@ for i=1:1:rows,
  
       
       % fixing the colorbar and colormap
-      freezeColors;
+      %freezeColors;
       
     elseif strcmpi (sym,'contour');
       [h,bins] = hist3([reshape(x(:,j,:),[m k]),reshape(y(:,i+1,:),[m k])],[n_bins2,n_bins2]);

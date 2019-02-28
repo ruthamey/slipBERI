@@ -1,4 +1,4 @@
-function [] = judge_convergence(filename)
+function [outputArg1,outputArg2] = judge_convergence(filename)
 %% JUDGEMENT DAY IS UPON US
 %
 %
@@ -40,9 +40,9 @@ for i = 1: length(intervals_to_calc_95_conf_at)
 end
 
 figure;
-plot(1:size(pcent95,1), pcent95(:,1), 'g', 'linewidth', 5)
+plot((1:size(pcent95,1))*1000, pcent95(:,1), 'g', 'linewidth', 5)
 hold on
-plot(1:size(pcent95,1), pcent95(:,2), 'r', 'linewidth', 5)
+plot((1:size(pcent95,1))*1000, pcent95(:,2), 'r', 'linewidth', 5)
 xlabel('Iterations')
 ylabel('Moment (Nm)')
  

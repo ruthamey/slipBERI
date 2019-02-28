@@ -5,7 +5,7 @@ function [x,y]=circharm(coeffs,phi,plot_flag)
 %   phi = rotation of each harmonic (excluding first)
 %
 %   Andy Hooper Dec 2010
-
+%
 if nargin<3
    plot_flag=1;
 end
