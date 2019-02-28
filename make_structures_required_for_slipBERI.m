@@ -36,6 +36,7 @@ invert = struct('quickcheck', 'yes',...                         % 'yes' or 'no'
                 'iterations', 100000, ...                       % only relevant for bayesian inversions
                 'regularise_moment', 'no', ...                  % 'yes' or 'no'
                 'solve_for_InSAR_offset', 'no',...              % 'yes' or 'no'
+                'solve_for_InSAR_ramp', 'no',...                % 'yes' or 'no'
                 'solve_for_fault_size', 'no', ...               % 'yes' or 'no'
                 'slip_initial', 0.7, ...                        % meters
                 'step_size', 0.05, ...                          % metres
