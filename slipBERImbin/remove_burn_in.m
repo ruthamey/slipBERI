@@ -31,6 +31,7 @@ savename = [housekeeping.save_name, '_', num2str(n_down_dip_patches_for_smoothin
 save(savename, '-v7.3');
 
 disp('Displaying result again...')
+display_result
 disp('...')
 disp('..')
 disp('.')

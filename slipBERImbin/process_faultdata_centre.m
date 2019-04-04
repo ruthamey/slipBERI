@@ -412,8 +412,8 @@ else
     if n_fault_strands > 1
 
         
-        disp('have commented out the end of process_faultdata_centre_ruthhack so PLOTTING FLAT WILL BE BACKWARDS but hopefully the rest will work better');
-
+        %disp('have commented out the end of process_faultdata_centre_ruthhack so PLOTTING FLAT WILL BE BACKWARDS but hopefully the rest will work better');
+%
 %        if any(fault_input(:,1) > 180 | any(fault_input(:,1) < 90)); 
 % 
 %            disp('now flipping disloc_model, so that when we plot in imagesc, number ONE patch in every fault strand is the top LEFT. so the LEFT of our flat fault is NORTH.')

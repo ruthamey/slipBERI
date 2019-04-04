@@ -1,42 +1,47 @@
 %  Script to plot the slip result from slipBERI.
 %
+%  NOTE that if you'd like to run this script in isolation, not as part of
+%  slipBERI, you will need to first load all the data from slipBERI
+%  e.g.                   load slip_run.mat
+%
+%
 % INPUTS, 'display' is a structure detailing what you'd like to display:
-%         plotmean = String, 'yes' or 'no'. whether you'd like to plot the mean and standard deviation or not.
-%         plotmode = String, 'yes' or 'no'. whether you'd like to plot the mode and standard deviation or not.
-%         plotmedian = String, 'yes' or 'no'. whether you'd like to plot the median and standard deviation or not.
-%         plotallsips = String, 'yes' or 'no'. whether you'd like one plot with the mean, mode, median, max likelihood (and true, if if in testing mode).
-%         plotprob = String, 'yes' or 'no'. whether you'd like to plot how the probability changes with the number of iterations.
-%         plothists = String. how many histograms you'd like to display. 'plothistall' means plot histograms for all the slip patches, 'plothistsample' means select some randomly to display
-%         plotsurfacedisp = String, 'yes' or 'no'. Display surface displacement - arrows for GPS, colour for InSAR LOS.
-%         plotmarginalPDFs = String, 'yes' or 'no'. this chooses the six patches with the highest slip and plots the marginal PDFs for this.
-%         plot_resolution_matrix = String. 'yes' or 'no'.
-%         plot3d = String. 'yes' or 'no' for whether to plot the fault geometry with slip mode.
-%         plotMAP = String. 'yes' or 'no' for whether to plot the MAP (max a posteriori) and standard deviation or not
-%         calc_confidence = String. 'yes' or 'no' for whether you want to plot the 95% confidence intervals for each patch.
+%   plotmean = whether you'd like to plot the mean or not. 'yes' or 'no'
+%   plotmode = whether you'd like to plot the mode or not. 'yes' or 'no'
+%   plotmedian = whether you'd like to plot the median or not. 'yes' or 'no'
+%   plotmaxlikelihood = whether you'd like to plot the maximum likelihood   or not. 'yes' or 'no'
+%   plotprob = whether you'd like to plot how the probability changes with the number of iterations. 'yes' or 'no'
+%   plothist = how many histograms you'd like to display. 'plothistsall' means plot histograms for all the slip patches, 'plothistsample' means select some randomly to display
+%   plotslips = whether you'd like to plot slip from all the different stats values as subplots on one plot. 'yes' or 'no'
+%   plotsurfacedisp = display surface vectors of displacement. 'yes' or 'no'
+%
+%
 %
 % R.M.J.Amey 2018
 
 
 
 %% Load data, if you need to
+% load slip_run.mat
 
+%close all;
 fontsize_plot = 32;
 set(0,'DefaultAxesFontSize',fontsize_plot)
 set(0,'defaultAxesFontName', 'Times New Roman')
 
 oldversion = exist('total_n_slip_patches_true');
         if oldversion  == 0
-            total_n_slip_patches = total_n_slip_patches;
+            total_n_slip_patches_true = total_n_slip_patches;
         end
         
-%         oldversion = exist('n_down_dip_patches_true');
-%         if oldversion  == 0
-%             total_n_down_dip_patches = n_down_dip_patches_for_smoothing;
-%         end
+        oldversion = exist('n_down_dip_patches_true');
+        if oldversion  == 0
+            n_down_dip_patches_true = n_down_dip_patches_for_smoothing;
+        end
         
         oldversion = exist('n_along_strike_patches_true');
         if oldversion  == 0
-            n_along_strike_patches = n_along_strike_patches_for_smoothing;
+            n_along_strike_patches_true = n_along_strike_patches_for_smoothing;
         end
 
 %% Find mean, mode, everything
@@ -177,22 +182,12 @@ if strcmp(invert.inversion_type, 'bayesian') == 1
 
         % Find maximum likelihood
         %if strcmp(invert.smoothing, 'none') ==1 && strcmp(invert.regularise_moment, 'no') ==1 && strcmp(invert.solve_for_dip, 'no') == 1; % posterior keep is only black if we JUST do a bayesian inversion with NOTHING ELSE
-        oldversion = exist('logposterior_keep');
-        if oldversion  == 0
-            logposterior_keep = posterior_keep;
-        end
-        
         if strcmp(invert.smoothing, 'none') ==1 && strcmp(invert.regularise_moment, 'no') ==1 % posterior keep is only black if we JUST do a bayesian inversion with NOTHING ELSE
             [~, I] = max(logL_keep);
             patch_MAP = slip_keep(:, I);
         else
             [~, I] = max(sum(logposterior_keep,1));  % sum for each slip patch
             patch_MAP = slip_keep(:, I);   
-        end
-        
-        oldversion = exist('alpha2_keep');
-        if oldversion  == 0
-            alpha2_keep = alpha_keep;
         end
         if strcmp(invert.smoothing, 'VK') == 1 || strcmp(invert.smoothing, 'laplacian') == 1
             alpha2_mostlikely = alpha2_keep(1:n_fault_strands_for_smoothing,I);
@@ -207,34 +202,21 @@ if strcmp(invert.inversion_type, 'bayesian') == 1
         % Calculate best offset
 
         if strcmp(invert.solve_for_InSAR_offset, 'yes') == 1
+
            for i = 1:n_InSAR_scenes
-                offset_mean(i,1) = mean(offset_keep(i,:));       % calculate the mean of the offset, but only the offsets relating to InSAR (the offsets relating to other datasets will be 0)
-                [counts, centers] = hist(offset_keep(i,:), nbins);   % count the number in each bin and the center of each bin
-                [M,I] = max(counts'); % If A is a matrix, then max(A) is a row vector containing the maximum value of each column
-                offset_mode(i,1) = centers(1,I);
+            offset_mean(i,1) = mean(offset_keep(i,:));       % calculate the mean of the offset, but only the offsets relating to InSAR (the offsets relating to other datasets will be 0)
+            [counts, centers] = hist(offset_keep(i,:), nbins);   % count the number in each bin and the center of each bin
+            [M,I] = max(counts'); % If A is a matrix, then max(A) is a row vector containing the maximum value of each column
+            offset_mode(i,1) = centers(1,I);
            end
+
+           
            offset_MAP = offset_keep(:, I);
         else
             offset_mean = offset_initial;
             offset_MAP = offset_initial;
             offset_median = offset_initial;
             offset_mode = offset_initial;
-        end
-        
-        % Calculate best ramp
-        if strcmp(invert.solve_for_InSAR_ramp, 'yes') == 1
-            for i = 1:(n_InSAR_scenes*3)
-                ramp_mean(i,1) = mean(ramp_keep(i,:));       % calculate the mean of the ramp, but only the ramps relating to InSAR (the ramps relating to other datasets will be 0)
-                [counts, centers] = hist(ramp_keep(i,:), nbins);   % count the number in each bin and the center of each bin
-                [M,I] = max(counts'); % If A is a matrix, then max(A) is a row vector containing the maximum value of each column
-                ramp_mode(i,1) = centers(1,I);
-           end
-           ramp_MAP = ramp_keep(:, I);
-        else
-            ramp_mean = ramp_initial;
-            ramp_MAP = ramp_initial;
-            ramp_median = ramp_initial;
-            ramp_mode = ramp_initial;
         end
 
         % Calculate residuals to the different models
@@ -288,6 +270,96 @@ if strcmp(invert.inversion_type, 'bayesian') == 1
 
 end
 
+%% Plot confidence intervals
+
+%can only use this if you used a version of slipBERi that calculated CI_low and CI_high
+% plot iterations vs confidence intervals and change in confidence intervals
+%     figure
+%     plot( store_number_at_sens_test, CI_low', 'b');
+%     hold on;
+%     plot( store_number_at_sens_test, CI_high', 'r');
+%     title('95% confidence');
+%     legend('Low', 'High');
+%     xlabel('Iterations')
+%     ylabel('Slip (meters)');
+% 
+%     figure
+%     plot( store_number_at_sens_test, diff(CI_low)', 'b');
+%     hold on;
+%     plot( store_number_at_sens_test, diff(CI_high)', 'r');
+%     title('diff in 95% confidence');
+%     legend('Low', 'High');
+%     xlabel('Iterations')
+%     ylabel('Slip (meters)');
+%     
+%     figure
+%     plot( store_number_at_sens_test, mean(diff(CI_low))', 'b');
+%     hold on;
+%     plot( store_number_at_sens_test, mean(diff(CI_high))', 'r');
+%     title('mean diff in 95% confidence');
+%     legend('Low', 'High');
+%     xlabel('Iterations')
+%     ylabel('Slip (meters)');
+
+
+% % restrospectively
+% 
+% sens_test_for_conf = sens_test;
+% sens_test_for_conf(sens_test_for_conf > size(slip_keep,2)) =[];
+% sens_test_for_conf(end) = []; %coz that's nan
+% 
+% for i = 1: length(sens_test_for_conf)
+% 
+%      slip_to_calc_conf = slip_keep(:, 1:sens_test_for_conf(i));
+% %     n_entries = size(slip_to_calc_conf,2);
+% %     SEM_beginning_to_end(:,i) = (std( slip_to_calc_conf') ./sqrt(n_entries))';               % Standard Error
+% %     ts = tinv([0.05  0.95],(n_entries-1));      % T-Score
+% %     CI_low_beginning_to_end(:,i) = mean(slip_to_calc_conf')' + (ts(1)*SEM_beginning_to_end(:,i));                     % Confidence Intervals
+% %     CI_high_beginning_to_end(:,i) = mean(slip_to_calc_conf')' + ts(2)*SEM_beginning_to_end(:,i);                      % Confidence Intervals
+% %     clear slip_to_calc_conf
+%     confidence_intervals_beginning_to_end(:,:,i) = prctile(slip_to_calc_conf',[5 95]);
+%     
+% end
+% 
+% CI_low_beginning_to_end(:,:) = confidence_intervals_beginning_to_end(1,:,:);
+% CI_high_beginning_to_end(:,:) = confidence_intervals_beginning_to_end(2,:,:);
+
+%confidence_intervals_diff = diff(confidence_intervals_beginning_to_end);
+
+% % plot confidence interval for all slip patches
+% figure('position', [100, 300, 800, 1000])
+% subplot(3,1,1)
+% plot( sens_test_for_conf, CI_low_beginning_to_end', 'b');
+% hold on;
+% plot( sens_test_for_conf, CI_high_beginning_to_end', 'r');
+% title('95% confidence');
+% ylim([0 max(CI_low_beginning_to_end(:,1))])
+% %legend('Low', 'High');
+% %xlabel('Iterations')
+% %ylabel('Slip (meters)');
+% 
+% % plot difference in confidence interval for all slip patches
+% %figure
+% subplot(3,1,2)
+% plot( sens_test_for_conf, diff(CI_low_beginning_to_end)', 'b');
+% hold on;
+% plot( sens_test_for_conf, diff(CI_high_beginning_to_end)', 'r');
+% title('95% confidence difference');
+% ylim([min(diff(CI_low_beginning_to_end(:,1)')) max(diff(CI_low_beginning_to_end(:,1)'))])
+% %legend('Low', 'High');
+% %xlabel('Iterations')
+% ylabel('Slip (meters)');
+% 
+% % this is the mean of all of the patches (coz I was getting may be 10 outliers, but for all I know they could be poorly constrained ones at hte bottom.
+% %figure
+% subplot(3,1,3)
+% plot( sens_test_for_conf, mean(diff(CI_low_beginning_to_end))', 'b');
+% hold on;
+% plot( sens_test_for_conf, mean(diff(CI_high_beginning_to_end))', 'r');
+% title('95% confidence mean difference');
+% %legend('Low', 'High');
+% xlabel('Iterations')
+% %ylabel('Slip (meters)');
 
 %% If in testing mode, plot 95% conf with true value
 
@@ -298,11 +370,11 @@ if strcmp(testing.testing_mode, 'yes') && strcmp(invert.smoothing, 'tikhonov') =
     
 %     % if you want to plot patches 1:end in ROWS instead of columns
 %     % (default) then uncomment this
-     A = 1: total_n_slip_patches;
-     A = reshape(A, total_n_down_dip_patches, n_along_strike_patches);
+     A = 1: total_n_slip_patches_true;
+     A = reshape(A, n_down_dip_patches_true, n_along_strike_patches_true);
      A = fliplr(A);
      A = A';
-     plot_numbers = reshape(A, total_n_slip_patches, 1);
+     plot_numbers = reshape(A, total_n_slip_patches_true, 1);
 %      A = 1: total_n_slip_patches;
 %      A = reshape(A, total_n_down_dip_patches, total_n_along_strike_patches);
 %       A = A';    
@@ -360,7 +432,7 @@ if strcmp(testing.testing_mode, 'yes') && strcmp(invert.smoothing, 'tikhonov') =
     betweenrows = total_n_along_strike_patches +0.5;
     %Y = [0 ceil(max(max(patch_conf_intervals)))];
     Y = [0 6];
-    Y = repmat(Y', 1, (total_n_down_dip_patches(1)));
+    Y = repmat(Y', 1, (n_down_dip_patches(1)));
     %X = [betweenrows ; betweenrows];
     %plot(X,Y, '--b');
     
@@ -391,7 +463,7 @@ end
 
 %% Plot the result, mean, flat
 
-if strcmp(display.plotmean, 'yes') + strcmp(display.plotmode, 'yes') + strcmp(display.plotmedian, 'yes') ~=0
+if strcmp(display.plotmean, 'yes') + strcmp(display.plotmode, 'yes') + strcmp(display.plotmedian, 'yes') + strcmp(display.plotmaxlikely, 'yes') ~=0;
 
 scaling_factor = 0.5;
 
@@ -549,11 +621,20 @@ if strcmp(display.plotallslips, 'yes') == 1
             
             true_model = load(testing.making_model, 'synthetic_disloc_model');
             rake_true = true_model.synthetic_disloc_model(5,:); 
-            spatial_model2_for_true = spatial_model2;
-            n_down_dip_patches_for_plotting = total_n_down_dip_patches;
-            n_along_strike_patches_for_plotting = total_n_along_strike_patches;  
-            n_down_dip_patches_for_true = total_n_down_dip_patches(1);
-            n_along_strike_patches_for_true = sum(n_along_strike_patches);
+            if strcmp(invert.pad_edges_with_zeros, 'yes') == 1;  % THIS IS CLUNKY, think about this later
+                n_down_dip_patches_for_true = total_n_down_dip_patches -1;
+                n_along_strike_patches_for_true = total_n_along_strike_patches -2;
+                spatial_model2_for_true = spatial_model2;
+                spatial_model2_for_true(end,:) = [];
+                spatial_model2_for_true(:,1) = [];
+                spatial_model2_for_true(:,end) = [];
+            else
+                spatial_model2_for_true = spatial_model2;
+                n_down_dip_patches_for_plotting = total_n_down_dip_patches;
+                n_along_strike_patches_for_plotting = total_n_along_strike_patches;  
+                n_down_dip_patches_for_true = n_down_dip_patches(1);
+                n_along_strike_patches_for_true = sum(n_along_strike_patches);
+            end
             %[ x,y,u_arrow,v_arrow ] = prepare_plot_rake( rake_true, synthetic_slip, spatial_model2_for_true, n_down_dip_patches_for_true, n_along_strike_patches_for_true, true_model.synthetic_disloc_model );
             true5 =load(testing.making_model, 'total_n_along_strike_patches'); 
             true6 =load(testing.making_model, 'total_n_down_dip_patches'); 
@@ -719,10 +800,10 @@ end
 
 %%  Patch on-off-edness
 
-if strcmp(invert.solve_for_fault_size, 'yes') ==1
+if strcmp(invert.solve_for_fault_size, 'yes') ==1 ;
 
-    onoffidentifyerkeeppercentage = sum(onlyonkeptpatches,2) / (store_number-burn_in_remove_number);
-    visualonoffidentifyerkeep = reshape(onoffidentifyerkeeppercentage, total_n_down_dip_patches, n_along_strike_patches);
+    onoffidentifyerkeeppercentage = onoffidentifyerstoretotal / store_number;
+    visualonoffidentifyerkeep = reshape(onoffidentifyerkeeppercentage, n_down_dip_patches, n_along_strike_patches);
     figure('position', [600, 300, 800, 600])
     imagesc([spatial_model3(1)/1000/2, (sum(fault_length)-(spatial_model2(1)/2))/1000], [spatial_model3(1)/1000/2, (fault_width(1)/1000/sin(deg2rad(disloc_model(4,1))))-spatial_model3(1)/1000/2],visualonoffidentifyerkeep)
     title('Patch on-off-edness (%)');
@@ -893,17 +974,21 @@ if strcmp(display.plotsurfacedisp, 'yes') + strcmp(testing.testing_mode, 'no') =
     for p= 1: max([n_InSAR_scenes 1])
     
         ax1 = subplot(max([n_InSAR_scenes 1]),3,counter);
+        %ax1 = subplot(3,1,counter);
 
         % First, plot InSAR, as long as there is some
         if strcmp(data.InSAR_datafile, 'none') ~= 1
             scatter( locs_InSAR(1,InSAR_identifyer==p), locs_InSAR(2,InSAR_identifyer==p), [], d_InSAR(InSAR_identifyer==p), 'filled')
             axis equal
             colorbar
+            %xlabel('UTM x, I think')
+            %ylabel('UTM y')
         end
 
         scale_factor = 50000;
         % Then plot GPS, as long as there is some
         if strcmp(data.GPS_datafile_2d, 'none') == 0 || strcmp(data.GPS_datafile_3d, 'none') == 0
+               %subplot(1,3,1); 
                hold on;
                quiver( locs_GPS_unique(1,:), locs_GPS_unique(2,:), d_GPS_e*scale_factor, d_GPS_n*scale_factor, 'k', 'Autoscale', 'off');   % i.e. plot every third row of the locations against E and N...
                ylabel('UTM y')
@@ -931,34 +1016,31 @@ if strcmp(display.plotsurfacedisp, 'yes') + strcmp(testing.testing_mode, 'no') =
 
         % Second, plot surface displacement predicted from slip solution
         ax2 = subplot(max([n_InSAR_scenes 1]),3,counter);      
+        %ax2 = subplot(3,1,counter);
         
         if strcmp(invert.variable_rake, 'yes') == 1
             G = G_mostlikely;
-         else
+        else
             G = G;
         end  
 
         d_hat =  G * patch_MAP;
-%             model_disloc_model = disloc_model;
-%             model_disloc_model(5,:) = rake_mostlikely;
-%             model_disloc_model(6,:) = patch_MAP;
-%             [u, flag]=disloc3d3(model_disloc_model, locs_InSAR, elastic_params.lambda, elastic_params.mu_okada);       % for each iteration, this gives sums displacement at each data location due to all slip patches
-%             d_hat = sum(u.*los_vector_InSAR);
-%         d_hat = d_hat';
-%         d_hat = [d_hat; zeros(length(d_GPS),1)];
-
+% 
+%         if strcmp(invert.solve_for_InSAR_offset, 'yes') == 1
+%             d_hat(d_identifyer==1) = d_hat(d_identifyer==1) + offset_mode;
+%         elseif strcmp(invert.smoothing, 'tikhonov') ==1
+%             d_hat(d_identifyer==1) = d_hat(d_identifyer==1) + best_offset_tik;
+%         end
  
          if strcmp(invert.solve_for_InSAR_offset, 'yes') == 1
-             d_hat(InSAR_identifyer==p) = d_hat(InSAR_identifyer==p) + offset_MAP(p);
-         elseif strcmp(invert.solve_for_InSAR_ramp, 'yes') == 1
-             rampvalues = Gramp*ramp_mode;
-             rampvalues((end+1):length(d))=0; % GPS
-             d_hat(InSAR_identifyer==p) = d_hat(InSAR_identifyer==p) + rampvalues(InSAR_identifyer==p,1);
+             d_hat(InSAR_identifyer==p) = d_hat(InSAR_identifyer==p) + offset_mode(p);
          elseif strcmp(invert.smoothing, 'tikhonov') ==1
              d_hat(d_identifyer==1) = d_hat(d_identifyer==1) + best_offset_tik;
          end
 
+
         hold on;
+        %ylabel('UTM y')
 
         if strcmp(data.InSAR_datafile, 'none') ~= 1    
             scatter( locs_InSAR(1,InSAR_identifyer==p), locs_InSAR(2,InSAR_identifyer==p), [], d_hat(InSAR_identifyer==p), 'filled')
@@ -1003,13 +1085,18 @@ if strcmp(display.plotsurfacedisp, 'yes') + strcmp(testing.testing_mode, 'no') =
 
             end 
 
+        %xlabel('UTM x')
+        %ylabel('UTM y, I think')
         if counter ==2
              title('Model (MAP)');
         end
         counter = counter+1;
 
+
+
         % Third, plot residuals
         ax3 = subplot(max([n_InSAR_scenes 1]),3,counter);
+        %ax3 = subplot(3,1,counter);
         residuals = (d - d_hat);%.^2;        % the first half are InSAR residuals, if we have InSAR. The second half are GPS residuals, if we have GPS.
 
         if strcmp(data.InSAR_datafile, 'none') ~= 1     % if we have InSAR data, then the first (length(locs_InSAR)) entries of d are for InSAR
@@ -1061,19 +1148,19 @@ if strcmp(display.plotsurfacedisp, 'yes') + strcmp(testing.testing_mode, 'no') =
         
 
         [redbluecmap] = redblue;
-        colormap(flipud(redbluecmap))
+        colormap(redbluecmap)
 
 
         % Make sure all colorbars are same scale, only display on RHS
-        if strcmp(data.InSAR_datafile, 'none') ~= 1
-            MaxC = max( abs([max(d_InSAR), max(d_hat(1:length(locs_InSAR))), max(residuals(1:length(locs_InSAR)))]));  % max colour is max InSAR value - ignore GPS arrows
-            %MinC = min( [min(d_InSAR), min(d_hat(1:length(locs_InSAR))), min(residuals(1:length(locs_InSAR)))]);  % max colour is max InSAR value - ignore GPS arrows
+        if strcmp(data.InSAR_datafile, 'none') ~= 1;
+            MaxC = max( [max(d_InSAR), max(d_hat(1:length(locs_InSAR))), max(residuals(1:length(locs_InSAR)))]);  % max colour is max InSAR value - ignore GPS arrows
+            MinC = min( [min(d_InSAR), min(d_hat(1:length(locs_InSAR))), min(residuals(1:length(locs_InSAR)))]);  % max colour is max InSAR value - ignore GPS arrows
             %subplot(max([n_InSAR_scenes 1]),3,counter-2); caxis([ MinC MaxC]); colorbar('off');
             %subplot(max([n_InSAR_scenes 1]),3,counter-1); caxis([ MinC MaxC]); colorbar('off');
             %subplot(max([n_InSAR_scenes 1]),3,counter); caxis([ MinC MaxC]);
-            subplot(max([n_InSAR_scenes 1]),3,counter-2); caxis([ -MaxC MaxC]); colorbar('off');
-            subplot(max([n_InSAR_scenes 1]),3,counter-1); caxis([ -MaxC MaxC]); colorbar('off');
-            subplot(max([n_InSAR_scenes 1]),3,counter); caxis([ -MaxC MaxC]);
+            subplot(max([n_InSAR_scenes 1]),3,counter-2); caxis([ -0.16 0.16]); colorbar('off');
+            subplot(max([n_InSAR_scenes 1]),3,counter-1); caxis([ -0.16 0.16]); colorbar('off');
+            subplot(max([n_InSAR_scenes 1]),3,counter); caxis([ -0.16 0.16]);
             %subplot(3,1,1);  caxis([ MinC MaxC]);
             %subplot(3,1,2);  caxis([ MinC MaxC]); colorbar('off');
             %subplot(3,1,3);  caxis([ MinC MaxC]); colorbar('off');
@@ -1081,8 +1168,8 @@ if strcmp(display.plotsurfacedisp, 'yes') + strcmp(testing.testing_mode, 'no') =
         if strcmp(data.GPS_datafile, 'none') ~= 1
             ylabel(colorbar, 'LOS displacement (m)')    % note that GPS has been projected into LOS
         end
-        colormap(flipud(redbluecmap))
-        if strcmp(data.atolls_datafile, 'none') ~= 1
+        colormap(redbluecmap)
+        if strcmp(data.atolls_datafile, 'none') ~= 1;
             ylabel(colorbar, 'vertical displacement (m)')    % note that GPS has been projected into LOS
         end
 
@@ -1092,7 +1179,88 @@ if strcmp(display.plotsurfacedisp, 'yes') + strcmp(testing.testing_mode, 'no') =
 
 
 
-
+% 
+%          % Save for GMT %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%         
+%          % data %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%          
+%          datamatrixinsar = [locs_InSAR_latlong(1,:)', locs_InSAR_latlong(2,:)', d_InSAR'*100];
+%          dlmwrite('datamatrixinsar.txt', datamatrixinsar, 'delimiter', ' ','precision',5);
+%         %%%datamatrixGPS = [locs_GPS_latlong(1,:)', locs_GPS_latlong(2,:)'; E_uncertainty; N_uncertainty; d_InSAR((length(d_InSAR)+1):end)'*100];
+%         %%%dlmwrite('datamatrixGPS.txt', datamatrixGPS, 'delimiter', ' ','precision',5);
+%     
+%     
+%         % model %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%     
+%         %%insar
+%         modelmatrixinsar = [locs_InSAR_latlong(1,:)', locs_InSAR_latlong(2,:)', d_hat(1:length(d_InSAR))*100];
+%         dlmwrite('modelmatrixinsar.txt', modelmatrixinsar, 'delimiter', ' ','precision',5);
+%         %%GPS2d
+%         N_uncertainty2d = ones(length(d_hat((length(locs_InSAR)+1):2:(length(locs_InSAR) + length(d_GPS_2d)))),1)*10;
+%         E_uncertainty2d = ones(length(d_hat((length(locs_InSAR)+1):2:(length(locs_InSAR) + length(d_GPS_2d)))),1)*10;
+%         modelmatrixGPS2d = [(locs_GPS_2d(1, 1:2: length(locs_GPS_2d))-360)', locs_GPS_2d(2, 1:2:length(locs_GPS_2d))', (d_hat((length(locs_InSAR)+1):2:(length(locs_InSAR) + length(d_GPS_2d))))*1000, (d_hat((length(locs_InSAR)+2):2:(length(locs_InSAR) +length(d_GPS_2d))))*1000, E_uncertainty2d, N_uncertainty2d, zeros(length(E_uncertainty2d),1)];
+%         dlmwrite('modelmatrixGPS2d.txt', modelmatrixGPS2d, 'delimiter', ' ','precision',5);
+%         %%GPS3d
+%         N_uncertainty3d = ones ( length(locs_GPS_3d(1, 1:3:end)-360), 1)*10;
+%         E_uncertainty3d =  ones ( length(locs_GPS_3d(1, 1:3:end)-360), 1)*10;
+%         U_uncertainty3d = ones ( length(locs_GPS_3d(1, 1:3:end)-360), 1)*10;
+%         %modelmatrixGPS3d = [(locs_GPS_3d(1, 1:3:end)-360)', locs_GPS_3d(2, 1:3:end)', d_hat(((length(locs_InSAR) + length(locs_GPS_2d)+1)):3:end), d_hat(((length(locs_InSAR) + length(locs_GPS_2d)+2)):3:end), d_hat(((length(locs_InSAR) + length(locs_GPS_2d)+3)):3:end), E_uncertainty3d, N_uncertainty3d, U_uncertainty3d, zeros(length(E_uncertainty3d),1), zeros(length(E_uncertainty3d),1),zeros(length(E_uncertainty3d),1)];
+%         modelmatrixGPS3d = [(locs_GPS_3d(1, 1:3:end)-360)', locs_GPS_3d(2, 1:3:end)', d_hat(((length(locs_InSAR) + length(locs_GPS_2d)+1)):3:end), d_hat(((length(locs_InSAR) + length(locs_GPS_2d)+2)):3:end), E_uncertainty3d, N_uncertainty3d, zeros(length(E_uncertainty3d),1)];
+%         %dlmwrite('modelmatrixGPS3d.txt', modelmatrixGPS3d, 'delimiter', ' ','precision',5);
+%     
+%         %full-resolution model for insar
+%         % load full-resolution insar
+%         [long_fullres,lat_fullres,d_InSAR_fullres] = grdread2('/nfs/see-fs-01_users/eermja/Documents/slipBERI/napa/InSAR/napa_sentinel_140807-140831_unw_corrected3_crop_flat_FLIPPEDsortedLOSforplotting.grd');
+%         locs_fullres = [reshape([repmat(long_fullres, length(lat_fullres), 1)], [], 1)'; reshape([repmat(lat_fullres, 1, length(long_fullres))], [], 1)'];
+%         locs_fullres(1,:) = locs_fullres(1,:)+360;
+%         [utmX_fullres,utmY_fullres]=ll2utm(fliplr(locs_fullres'));
+%         LOS_fullres = [ones(1,length(locs_fullres))*mean(los_vector_InSAR(1,:)); ones(1,length(locs_fullres))*mean(los_vector_InSAR(2,:)); ones(1,length(locs_fullres))*mean(los_vector_InSAR(3,:))];
+%         
+%         % compute green's functions for all of those points
+%         G_fullres = [];
+%             for i=1: total_n_slip_patches
+%                         [u_for_unit_slip_InSAR, ~]=disloc3d3(disloc_model(:,i), locs_fullres, elastic_params.lambda,elastic_params.mu_okada) ;
+%                         G_fullres(:,i) = sum(u_for_unit_slip_InSAR.*LOS_fullres);
+%             end
+%         
+%                     theta = 180 - rake_mostlikely;
+%                     theta = degtorad(theta);         
+%                            for r = 1 : total_n_slip_patches             % we wanna select the correct COLUMN, relating to the current slip patch, out of the G matrix for that value of rake.
+%                                      G_mostlikely(:,r) = cos(theta(r)) * G_ss(:,r) + sin(theta(r)) * G_ds(:,r);    % I THINK. check yo' trigonometry  
+%                            end   
+%         
+%         d_hat_fullres = G_fullres * patch_MAP;                  
+%                            
+%         % write out
+%         
+%         % i think it would be best to do this as a grid
+%         grdwrite2(long_fullres,lat_fullres,d_hat_fullres,'modelmatrixinsarfullres.grd')
+%         
+%         modelmatrixinsarfullres = [reshape(repmat(long_fullres, length(lat_fullres), 1), [], 1), reshape(repmat(lat_fullres, 1, length(long_fullres)),[],1), d_hat_fullres*100];
+%         dlmwrite('modelmatrixinsarfullres.txt', modelmatrixinsarfullres, 'delimiter', ' ','precision',5);
+%     
+%     
+%         % residuals %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%     
+%     
+%         % insar
+%         residualmatrixinsar = [locs_InSAR_latlong(1,:)', locs_InSAR_latlong(2,:)', residuals(1:length(d_InSAR))*100];
+%         dlmwrite('residualmatrixinsar.txt', residualmatrixinsar, 'delimiter', ' ','precision',5);
+%         % GPS 2d
+%         residualmatrixGPS2d = [(locs_GPS_2d(1, 1:2: length(locs_GPS_2d))-360)', locs_GPS_2d(2, 1:2:length(locs_GPS_2d))', (residuals((length(locs_InSAR)+1):2:(length(locs_InSAR) + length(d_GPS_2d))))*1000, (residuals((length(locs_InSAR)+2):2:(length(locs_InSAR) +length(d_GPS_2d))))*1000, E_uncertainty2d, N_uncertainty2d, zeros(length(E_uncertainty2d),1)];
+%         dlmwrite('residualmatrixGPS2d.txt', residualmatrixGPS2d, 'delimiter', ' ','precision',5);
+%         % GPS 3d
+%         %residualmatrixGPS3d = [(locs_GPS_3d(1,1:3:end)-360)',locs_GPS_3d(2, 1:3:end)', residuals(((length(locs_InSAR) + length(locs_GPS_2d)+1)):3:end), residuals(((length(locs_InSAR) + length(locs_GPS_2d)+2)):3:end), residuals(((length(locs_InSAR) + length(locs_GPS_2d)+3)):3:end) , E_uncertainty3d, N_uncertainty3d, U_uncertainty3d, zeros(length(E_uncertainty3d),1), zeros(length(E_uncertainty3d),1),zeros(length(E_uncertainty3d),1)];
+%          residualmatrixGPS3d = [(locs_GPS_3d(1,1:3:end)-360)',locs_GPS_3d(2, 1:3:end)', residuals(((length(locs_InSAR) + length(locs_GPS_2d)+1)):3:end), residuals(((length(locs_InSAR) + length(locs_GPS_2d)+2)):3:end) , E_uncertainty3d, N_uncertainty3d, zeros(length(E_uncertainty3d),1)];
+%          dlmwrite('residualmatrixGPS3d.txt', residualmatrixGPS3d, 'delimiter', ' ','precision',5);
+%      
+%          % fullres
+%          residuals_fullres = d_InSAR_fullres - d_hat_fullres;
+%          grdwrite2(long_fullres,lat_fullres,residuals_fullres,'residualmatrixinsarfullres.grd')
+% 
+%     
+%     counter = counter+1;
+% 
       end
 
 
@@ -1113,37 +1281,80 @@ if strcmp( display.plothists, 'plothistsall') == 1
     %   2 4 6                           4 5 6
     %
     % So that patch 1 is subplot 1, but patch 2 is subplot 4, etc
-
-    A = 1: total_n_slip_patches;
-    A = reshape(A, total_n_along_strike_patches, total_n_down_dip_patches);
+    
+    if strcmp(invert.pad_edges_with_zeros, 'yes') ==1
+       n_along_strike_patches_true = total_n_along_strike_patches - 2;
+       n_down_dip_patches_true = total_n_down_dip_patches - 1;
+       total_n_slip_patches_true = n_along_strike_patches_true * n_down_dip_patches_true;
+       
+       slip_keep_just_real_patches = slip_keep;
+       slip_keep_just_real_patches(total_n_down_dip_patches: total_n_down_dip_patches : end, :) = [];
+       slip_keep_just_real_patches(1:(total_n_down_dip_patches-1), :) = [];
+       slip_keep_just_real_patches(total_n_slip_patches_true+1 : end, :) = [] ;
+       
+       patch_mean_just_real_patches = patch_mean;
+       patch_mean_just_real_patches(total_n_down_dip_patches: total_n_down_dip_patches : end, :) = [];
+       patch_mean_just_real_patches(1:(total_n_down_dip_patches-1), :) = [];
+       patch_mean_just_real_patches(total_n_slip_patches_true+1 : end, :) = [] ;
+       
+       patch_mode_just_real_patches = patch_mode;
+       patch_mode_just_real_patches(total_n_down_dip_patches: total_n_down_dip_patches : end, :) = [];
+       patch_mode_just_real_patches(1:(total_n_down_dip_patches-1), :) = [];
+       patch_mode_just_real_patches(total_n_slip_patches_true+1 : end, :) = [] ;     
+       
+       patch_median_just_real_patches = patch_median;
+       patch_median_just_real_patches(total_n_down_dip_patches: total_n_down_dip_patches : end, :) = [];
+       patch_median_just_real_patches(1:(n_down_dip_patches-1), :) = [];
+       patch_median_just_real_patches(total_n_slip_patches_true+1 : end, :) = [] ;
+       
+       patch_conf_intervals_just_real_patches = patch_conf_intervals;
+       patch_conf_intervals_just_real_patches(total_n_down_dip_patches: total_n_down_dip_patches : end, :) = [];
+       patch_conf_intervals_just_real_patches(1:(total_n_down_dip_patches-1), :) = [];
+       patch_conf_intervals_just_real_patches(total_n_slip_patches_true+1 : end, :) = [] ;
+       
+    else
+        total_n_slip_patches_true = total_n_slip_patches;
+        n_along_strike_patches_true = total_n_along_strike_patches;
+        n_down_dip_patches_true = total_n_down_dip_patches;
+        slip_keep_just_real_patches = slip_keep;
+        patch_mean_just_real_patches = patch_mean;
+        patch_mode_just_real_patches = patch_mode;
+        patch_median_just_real_patches = patch_median;
+        patch_conf_intervals_just_real_patches = patch_conf_intervals;       
+    end
+    
+    
+    A = 1: total_n_slip_patches_true;
+    A = reshape(A, n_along_strike_patches_true, n_down_dip_patches_true);
     A = A';
     A = fliplr(A);
-    plot_numbers = reshape(A, total_n_slip_patches, 1);
+    plot_numbers = reshape(A, total_n_slip_patches_true, 1);
 
-    nbins = 20;
+    nbins = 8;
     
     % Plot the patches
     figure('position', [100, 350, 1600, 1200])
-    for i = 1: total_n_slip_patches
-       subplot( total_n_down_dip_patches, total_n_along_strike_patches, plot_numbers(i))
+    for i = 1: total_n_slip_patches_true
+       subplot( n_down_dip_patches_true, n_along_strike_patches_true, plot_numbers(i))
        colormap default
        %hist( slip_keep_just_real_patches(i,:), nbins)
        %[counts, centers] = hist(slip_keep_just_real_patches(i,:), nbins);   
-       hist(slip_keep(i,onlyonkeptpatches(i,:)), nbins);
+       hist(slip_keep_just_real_patches(i,onlyonkeptpatches(i,:)), nbins);
        hold on
-       x_mean = [patch_mean(i) patch_mean(i)];
-       x_mode = [patch_mode(i) patch_mode(i)];
-       x_median = [patch_median(i) patch_median(i)];
-       %x_conf_lower = [patch_conf_intervals(i,1) patch_conf_intervals(i,1)];
-       %x_conf_higher = [patch_conf_intervals(i,2) patch_conf_intervals(i,2)];
+       y = [0 10000];
+       x_mean = [patch_mean_just_real_patches(i) patch_mean_just_real_patches(i)];
+       x_mode = [patch_mode_just_real_patches(i) patch_mode_just_real_patches(i)];
+       x_median = [patch_median_just_real_patches(i) patch_median_just_real_patches(i)];
+       x_conf_lower = [patch_conf_intervals_just_real_patches(i,1) patch_conf_intervals_just_real_patches(i,1)];
+       x_conf_higher = [patch_conf_intervals_just_real_patches(i,2) patch_conf_intervals_just_real_patches(i,2)];
        plot(x_mean,y,'r');
        plot(x_mode,y,'g');
        plot(x_median,y,'k');
-       %plot(x_conf_lower, y, 'y');
-       %plot(x_conf_higher, y, 'y');
+       plot(x_conf_lower, y, 'y');
+       plot(x_conf_higher, y, 'y');
            if strcmp(testing.testing_mode, 'yes')
               load(testing.making_model, 'synthetic_slip');
-              if length(synthetic_slip) == total_n_slip_patches;
+              if length(synthetic_slip) == total_n_slip_patches_true;
                 x_true = [synthetic_slip(i) synthetic_slip(i)]; % plot x_true as a line
                 plot(x_true, y, 'm');
               end
@@ -1152,22 +1363,19 @@ if strcmp( display.plothists, 'plothistsall') == 1
        set(gca,'Xticklabel',[])
        %title(['Slip patch ', num2str(i)])
        %ylim([0, max(max(counts))]);
-       %xlim([0 2.5])
-       %xlim([0 5])
-       %ylim([0 8e5])
-       %xlim([0 2.5])
-       %ylim([0 4e5])
+       xlim([0 3])
+       ylim([0 35e5])
     end
   
 % Put x and y labels on middle-outside plots
-subplot(total_n_down_dip_patches, total_n_along_strike_patches, plot_numbers(ceil(total_n_down_dip_patches/2)))
+subplot(n_down_dip_patches_true, n_along_strike_patches_true, plot_numbers(ceil(n_down_dip_patches_true/2)))
 ylabel('Frequency')
-subplot(total_n_down_dip_patches, total_n_along_strike_patches, plot_numbers((ceil(n_along_strike_patches/2))*total_n_down_dip_patches))
+subplot(n_down_dip_patches_true, n_along_strike_patches_true, plot_numbers((ceil(n_along_strike_patches_true/2))*n_down_dip_patches_true))
 xlabel('Slip (m)')
           
 
     % Put a legend, but only on the histogram on the far right
-    subplot(total_n_down_dip_patches, total_n_along_strike_patches, total_n_along_strike_patches)
+    subplot(n_down_dip_patches_true, n_along_strike_patches_true, n_along_strike_patches_true)
     if strcmp(testing.testing_mode, 'yes')
         legend('Sampling', 'Mean', 'Mode', 'Median','95%','95%','True');
     else
@@ -1320,10 +1528,234 @@ if strcmp(display.plot3d, 'yes') == 1
     [xquivmag,yquivmag,zquivmag] = reproject_quiv(quiv_mags,disloc_model(3,:)',disloc_model(4,:)');   % nicked from Tom.   reproject_quiv(ss_mag, ds_mag, strike, dip)
     %[xquivmag,yquivmag,zquivmag] = pol2cart(disloc_model(3,:)',rake_mode,patch_mode);
     scale_factor = 0.7;
-    quiver3(   disloc_model(1,:)'/1000,     disloc_model(2,:)'/1000,    (disloc_model(8,:)+disloc_model(9,:))'/(-2*sind(disloc_model(4,1)))/1000    ,xquivmag*scale_factor, yquivmag*scale_factor, zquivmag*scale_factor, 'k', 'Linewidth', 1.5, 'Autoscale', 'off');
+    quiver3(disloc_model(1,:)'/1000,disloc_model(2,:)'/1000,-0.5*(disloc_model(8,:)+disloc_model(9,:))'/1000,xquivmag*scale_factor, yquivmag*scale_factor, zquivmag*scale_factor, 'k', 'Linewidth', 1.5, 'Autoscale', 'off');
     
 end
 
+%%  Plot ratio of slip to variance
+% 
+% patches_to_keep = zeros(1,total_n_slip_patches);
+% patches_to_keep(patch_mode> 0.2*max(patch_mode)) = 1;
+% faults= disloc_model; faults(6,:) = patches_to_keep; figure; doplot3d_ruthhack(faults', 'jet');
+%
+% % % NAPA TWO PATCHES
+% patches_to_keep = zeros(1,total_n_slip_patches);
+% patches_to_keep(patch_mode> prctile(patch_mode,75)) = 1;
+% patches_to_keep(1:n_down_dip_patches:total_n_slip_patches)= 1;
+% patches_to_keep(2:n_down_dip_patches:total_n_slip_patches)= 1;
+% patches_to_keep(3:n_down_dip_patches:total_n_slip_patches)= 1;
+% faults= disloc_model; faults(6,:) = patches_to_keep; figure; doplot3d_ruthhack(faults', 'jet');
+%save('patches_to_keep_2ftikhonov','patches_to_keep')
+
+% napa min norm 75 percentile
+% patches_to_keep = zeros(1,total_n_slip_patches);
+% patches_to_keep(patch_mode> prctile(patch_mode,75)) = 1;
+% patches_to_keep(1:n_down_dip_patches:total_n_slip_patches)= 1;
+% patches_to_keep(2:n_down_dip_patches:total_n_slip_patches)= 1;
+% patches_to_keep(3:n_down_dip_patches:total_n_slip_patches)= 1;
+% makezero = [63,71,85,90,103,125,252,273];
+% makeone = [147];
+% patches_to_keep(makezero) = 0;
+% patches_to_keep(makeone) = 1;
+% faults= disloc_model; faults(6,:) = patches_to_keep; figure; doplot3d_ruthhack(faults', 'jet');
+% save('patches_to_keep_2fminnorm75percentile','patches_to_keep')
+
+%patches_to_keep(patch_mode> 0.1) = 1;
+%patches_to_keep(1:n_down_dip_patches:total_n_slip_patches)= 1;
+%patches_to_keep(2:n_down_dip_patches:total_n_slip_patches)= 1;
+%patches_to_keep(3:n_down_dip_patches:total_n_slip_patches)= 1;
+%patches_to_keep(212)= 1;
+
+
+
+
+% Napa lots of patches
+%patches_to_keep(1,170)= 1;          % for large number of patches
+%patches_to_keep(1,196)= 1;          % for large number of patches
+%patches_to_keep(1,222)= 1;          % for large number of patches
+%patches_to_keep(1,235)= 1;          % for large number of patches
+%patches_to_keep(1,236)= 1;          % for large number of patches
+%patches_to_keep(1,248)= 1;          % for large number of patches
+%patches_to_keep(1,261)= 1;          % for large number of patches
+% Napa fewer patches
+%patches_to_keep(1,61)= 1;          % for small number of patches
+
+
+
+% patches_to_keep(1,183)= 1;          % for large number of patches
+% patches_to_keep(1,157) = 1;         % for large number of patches
+% patches_to_keep(1,223) = 1;         % for large number of patches
+% patches_to_keep(1,222) = 1;         % for large number of patches
+% patches_to_keep(1,209) = 1;         % for large number of patches
+% patches_to_keep(1,235) = 1;         % for large number of patches
+% patches_to_keep(1,235) = 1;         % for large number of patches
+% patches_to_keep(1,248) = 1;         % for large number of patches
+
+
+%     figure
+%     
+%     %slip_std_ratio = (patch_mode-(patch_std'))./patch_std';
+%     slip_std_ratio = patch_mode./patch_std';
+%     %slip_std_ratio = (patch_mode.*patch_resolution)./patch_std';
+%     patches_to_keep = zeros(1,total_n_slip_patches);
+%     %patches_to_keep(slip_std_ratio< (max(slip_std_ratio)/2)) = 0;
+%     patches_to_keep(patch_mode> 0.12) = 1;
+%     faults= disloc_model; faults(6,:) = patches_to_keep; figure; doplot3d_ruthhack(faults', 'jet');
+%     
+%     % to add in an extra row around the edge  of patches to keep
+%     difference_in_keep_patches = diff(patches_to_keep);
+%     difference_in_keep_patches = [0, difference_in_keep_patches];
+%     patches_to_keep2 = patches_to_keep;
+%     patches_to_keep2(difference_in_keep_patches~=0) = 1;
+%     % THEN YOU NEED TO CORRECT FOR THE BOTTOM + connect up disconnectedpatches
+%     patches_to_keep2(n_down_dip_patches:n_down_dip_patches:total_n_slip_patches) = 0;   % correcting to turn off the bottom row
+%     patches_to_keep2(2*n_down_dip_patches+1:n_down_dip_patches:(n_slip_patches_on_each_fault_strand(1)+n_slip_patches_on_each_fault_strand(2)+n_slip_patches_on_each_fault_strand(3))) = 1;   % correcting to turn on the surface on top strand
+%     patches_to_keep2(1:n_down_dip_patches:total_n_slip_patches) = 1; % correcting to turn on the top row
+%     patches_to_keep2(2:n_down_dip_patches:total_n_slip_patches) = 1;% and the next row down
+%     patches_to_keep2(28) = 1;
+%     patches_to_keep2(30) = 1;
+%     patches_to_keep2(42) = 1;
+%     patches_to_keep2(43) = 1;
+%     patches_to_keep2(44) = 1;
+%     patches_to_keep2(56) = 1;
+%     patches_to_keep2(32) = 0;
+%     patches_to_keep2(157) = 1;
+%     patches_to_keep2(170) = 1;
+%     patches_to_keep2(171) = 1;
+%     patches_to_keep2(183) = 1;
+%     patches_to_keep2(196) = 1;
+%     patches_to_keep2(210) = 1;
+%     % to add a row down as well...
+%     patches_to_keep2(17) = 1;
+%     patches_to_keep2(18) = 1;
+%     patches_to_keep2(19) = 1;
+%     patches_to_keep2(32) = 1;
+%     patches_to_keep2(45) = 1;
+%     patches_to_keep2(57) = 1;
+%     patches_to_keep2(71) = 1;
+%     patches_to_keep2(84) = 1;
+%     patches_to_keep2(97) = 1;
+%     patches_to_keep2(111) = 1;
+%     patches_to_keep2(123) = 1;
+%     patches_to_keep2(135) = 1;
+%     patches_to_keep2(147) = 1;
+%     % AND another row down
+%     patches_to_keep2(16) = 1;
+%     patches_to_keep2(29) = 1;
+%     patches_to_keep2(33) = 1;
+%     patches_to_keep2(46) = 1;
+%     patches_to_keep2(58) = 1;
+%     patches_to_keep2(72) = 1;
+%     patches_to_keep2(85) = 1;
+%     patches_to_keep2(98) = 1;
+%     patches_to_keep2(112) = 1;
+%     patches_to_keep2(124) = 1;
+%     patches_to_keep2(136) = 1;
+%     patches_to_keep2(148) = 1;
+%      % AND ANOTHER row down
+%     patches_to_keep2(3) = 1;
+%     patches_to_keep2(4) = 1;
+%     patches_to_keep2(17) = 1;
+%     patches_to_keep2(30) = 1;
+%     patches_to_keep2(34) = 1;
+%     patches_to_keep2(47) = 1;
+%     patches_to_keep2(59) = 1;
+%     patches_to_keep2(73) = 1;
+%     patches_to_keep2(86) = 1;
+%     patches_to_keep2(99) = 1;
+%     patches_to_keep2(113) = 1;
+%     patches_to_keep2(125) = 1;
+%     patches_to_keep2(137) = 1;
+%     patches_to_keep2(149) = 1;
+%      % final row before it gets silly
+%     patches_to_keep2(18) = 1;
+%     patches_to_keep2(32) = 1;
+%     patches_to_keep2(35) = 1;
+%     patches_to_keep2(48) = 1;
+%     patches_to_keep2(60) = 1;
+%     patches_to_keep2(74) = 1;
+%     patches_to_keep2(87) = 1;
+%     patches_to_keep2(100) = 1;
+%     patches_to_keep2(114) = 1;
+%     patches_to_keep2(126) = 1;
+%     patches_to_keep2(138) = 1;
+%     patches_to_keep2(150) = 1;
+%     faults= disloc_model; faults(6,:) = patches_to_keep2; figure; doplot3d_ruthhack(faults', 'jet');
+%     % save('patches_to_keep','patches_to_keep2')
+%     
+%     
+%     % Plot fault in 3D with MAP solution
+%     faults = disloc_model;
+%     
+%     % translate back to lat and long
+%         if strcmp(use_local_coordinate_system, 'yes') == 1;
+%             xy(1,:) = disloc_model(1,:)/1000; 
+%             xy(2,:) = disloc_model(2,:)/1000; 
+%             [longlat] = local2llh(xy,data.origin);  % this is fine, it's just being translated back 
+%             
+%             % translate to utmx utmy
+%             [utmx, utmy, UTMzone] = ll2utm(longlat(2,:), longlat(1,:));
+%             faults(1,:) = utmx;
+%             faults(2,:) = utmy;
+%         end
+%     
+%     %subplot(2,1,1)
+%     faults(5,:) = rake_mostlikely;
+%     faults(6,:) = slip_std_ratio;
+%     doplot3d_ruthhack(faults', 'hsv')
+%     colorbar
+%     %doplot3d_ruthhack_utm2ll(faults', 'jet', UTMzone)
+%     %subplot(2,1,2)
+%     figure
+%     faults(6,:) = patches_to_keep;
+%     doplot3d_ruthhack(faults', 'gray')
+%     %hold on;
+%     colorbar
+%     %caxis([1 5]) 
+%     title('patches to keep')
+% 
+%     
+% %     % and plot convergence of these
+% %     figure
+% %     plot( store_number_at_sens_test, CI_low(patches_to_keep==1,:)', 'b');
+% %     hold on;
+% %     plot( store_number_at_sens_test, CI_high(patches_to_keep==1,:)', 'r');
+% %     title('95% confidence for only good patches');
+% %     legend('Low', 'High');
+% %     xlabel('Iterations')
+% %     ylabel('Slip (meters)');
+% % 
+% %     figure
+% %     plot( store_number_at_sens_test, diff(CI_low(patches_to_keep==1,:))', 'b');
+% %     hold on;
+% %     plot( store_number_at_sens_test, diff(CI_high(patches_to_keep==1,:))', 'r');
+% %     title('diff in 95% confidence for only good patches');
+% %     legend('Low', 'High');
+% %     xlabel('Iterations')
+% %     ylabel('Slip (meters)');
+
+
+%% Plot slip ellipse with time
+
+% if strcmp(invert.solve_for_fault_size, 'yes') == 1;
+% 
+%          figure;
+%              eliptheta=0:0.01:2*pi;
+%              uniq_a_keep = unique(a_keep, 'stable');        % need stalbe to keep same order
+%              uniq_b_keep = unique(b_keep, 'stable');
+%              uniq_x_keep = unique(x_keep, 'stable');
+%              uniq_z_keep = unique(z_keep, 'stable');
+% 
+%          
+%          %for pq = find(x_keep,1, 'first'):(length(x_keep(x_keep~=0))+find(x_keep,1, 'first'))
+%          for pq = 1:length(uniq_a_keep);
+%              plot(uniq_a_keep(pq)*cos(eliptheta)+uniq_x_keep(pq), uniq_b_keep(pq)*sin(eliptheta)+uniq_z_keep(pq), 'b-', 'LineWidth', 1)
+%              set(gca,'Ydir','reverse')
+%              axis equal tight
+%              axis([0 fault_length 0 fault_width])
+%              pause(0.001)
+%          end
+% end
          
 
 %% Plot 2D pdfs
@@ -1331,7 +1763,11 @@ end
 
 if strcmp(display.plotmarginalPDFs, 'yes') == 1
  
+    if strcmp(invert.pad_edges_with_zeros, 'yes') == 1
+        slip_for_marginal_PDF_plotting = slip_keep_just_real_patches;
+    else
         slip_for_marginal_PDF_plotting = slip_keep;
+    end
     
                 %true_slip_for_marginal_PDF_plotting = synthetic_slip;
     
@@ -1352,7 +1788,7 @@ if strcmp(display.plotmarginalPDFs, 'yes') == 1
                 true_slip_for_marginal_PDF_plotting = synthetic_slip(maxIndex);
            end
      else
-         sortIndex = 1:total_n_slip_patches;
+         sortIndex = 1:total_n_slip_patches_true;
         if strcmp(testing.testing_mode, 'yes') == 1
                 true_slip_for_marginal_PDF_plotting = synthetic_slip;
         end
@@ -1409,49 +1845,49 @@ end
 %%  Plot parameters through time
 
 
-% if strcmp(invert.inversion_type, 'bayesian') == 1
-% 
-%     % Slip
-%     figure('position', [200, 300, 1600, 1200])
-%     for i = 1: total_n_slip_patches
-%        subplot(total_n_down_dip_patches,total_n_along_strike_patches,plot_numbers(i))
-%        plot(1:length(slip_keep), slip_keep(i,:));
-%        ylim([priors.min_slip(1),max(max(slip_keep))])
-%     end
-%     xlabel('Iterations')
-%     subplot(total_n_down_dip_patches,total_n_along_strike_patches,1)
-%     ylabel('Slip')
-%     title('Slip trace plot')
-% 
-%     if strcmp(invert.smoothing, 'none') ~= 1
-%         % Alpha
-%         figure('position', [200, 300, 800, 1200])
-%         for i = 1: n_fault_strands_for_smoothing
-%            subplot(n_fault_strands_for_smoothing,1,i)
-%            plot(1:length(alpha2_keep), alpha2_keep(i,:));
-%            ylim([priors.min_alpha2(i),max(alpha2_keep(i,:))])
-%         end
-%         xlabel('Iterations')
-%         subplot(n_fault_strands_for_smoothing,1,1);
-%         ylabel('Alpha')
-%         title('Alpha trace plot')
-%     end
-% 
-%     % Rake
-%     figure('position', [200, 300, 1600, 1200])
-%     for i = 1: total_n_slip_patches
-%        subplot(total_n_down_dip_patches,total_n_along_strike_patches,plot_numbers(i))
-%        plot(1:length(rake_keep), rake_keep(i,:));
-%        ylim([priors.min_rake(1),priors.max_rake(1)])
-%     end
-%     xlabel('Iterations')
-%     subplot(total_n_down_dip_patches,total_n_along_strike_patches,1)
-%     ylabel('Rake')
-%     title('Rake trace plot')
-% 
-%     % Circharm parameters
-% 
-% end
+if strcmp(invert.inversion_type, 'bayesian') == 1
+
+    % Slip
+    figure('position', [200, 300, 1600, 1200])
+    for i = 1: total_n_slip_patches
+       subplot(total_n_down_dip_patches,total_n_along_strike_patches,plot_numbers(i))
+       plot(1:length(slip_keep), slip_keep(i,:));
+       ylim([priors.min_slip(1),max(max(slip_keep))])
+    end
+    xlabel('Iterations')
+    subplot(total_n_down_dip_patches,total_n_along_strike_patches,1)
+    ylabel('Slip')
+    title('Slip trace plot')
+
+    if strcmp(invert.smoothing, 'none') ~= 1
+        % Alpha
+        figure('position', [200, 300, 800, 1200])
+        for i = 1: n_fault_strands_for_smoothing
+           subplot(n_fault_strands_for_smoothing,1,i)
+           plot(1:length(alpha2_keep), alpha2_keep(i,:));
+           ylim([priors.min_alpha2(i),max(alpha2_keep(i,:))])
+        end
+        xlabel('Iterations')
+        subplot(n_fault_strands_for_smoothing,1,1);
+        ylabel('Alpha')
+        title('Alpha trace plot')
+    end
+
+    % Rake
+    figure('position', [200, 300, 1600, 1200])
+    for i = 1: total_n_slip_patches
+       subplot(total_n_down_dip_patches,total_n_along_strike_patches,plot_numbers(i))
+       plot(1:length(rake_keep), rake_keep(i,:));
+       ylim([priors.min_rake(1),priors.max_rake(1)])
+    end
+    xlabel('Iterations')
+    subplot(total_n_down_dip_patches,total_n_along_strike_patches,1)
+    ylabel('Rake')
+    title('Rake trace plot')
+
+    % Circharm parameters
+
+end
 
 %% Offset
 
@@ -1462,31 +1898,6 @@ if strcmp(invert.solve_for_InSAR_offset, 'yes') == 1
     for p = 1: n_InSAR_scenes
         subplot(n_InSAR_scenes,1,p)
         hist(offset_keep(p,:), 50)
-    end
-end
- 
-
-if strcmp(invert.solve_for_InSAR_ramp, 'yes') == 1
-    figure('position', [600, 300, 800, 1200])
-    for p = 1: n_InSAR_scenes
-        subplot(n_InSAR_scenes,3,3*p -2)
-        hist(ramp_keep(3*p -2,:), 50)
-        ylabel(['InSAR scene ', num2str(p)]);
-        if p == 1
-            title('InSAR ramp x')
-        end
-
-        subplot(n_InSAR_scenes,3,3*p -1)
-        hist(ramp_keep(3*p -1,:), 50)
-        if p == 1
-            title('InSAR ramp y')
-        end
-
-        subplot(n_InSAR_scenes,3,3*p)
-        hist(ramp_keep(3*p,:), 50)
-        if p == 1
-            title('InSAR ramp offset')
-        end 
     end
 end
 
@@ -1559,6 +1970,9 @@ if strcmp(invert.ensemble_sampling, 'yes') == 1
        xlabel('offset')
        ylabel('i')
    end
-
+   
+%    % Circular harmonics    
+%    subplot(2,2,4)
+    
 end
 

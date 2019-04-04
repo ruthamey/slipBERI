@@ -770,14 +770,6 @@ disp('    ');
 
 %% OPTION 1 - least-squares inversion *************************************
 
-% does least squares find the actual solution? a lesson on non-uniqueness
-% no noise - least_squares finds correct solution. good.
-% with noise - least-squares solution does not
-% 
-% if strcmp(invert.inversion_type, 'least-squares') == 1;
-%    error('least-squares inversion isn''t actually an option'); 
-% end
-
 % AT THE MOMENT this doesn't solve for variable rake... G is calculated
 % just using the rake given in fault.fault_descriptor_file
 
@@ -1488,21 +1480,21 @@ if strcmp(invert.inversion_type, 'bayesian') == 1                         %bayes
         alpha2_keep = zeros(n_fault_strands_for_smoothing,ceil(invert.iterations));
         alpha2_modelparameter_initial = invert.alpha2_initial;
             if n_fault_strands_for_smoothing ~= length(priors.min_alpha2)
-                priors.min_alpha2 = repmat(priors.min_alpha2, 1, n_fault_strands_for_smoothing);
-                priors.max_alpha2 = repmat(priors.max_alpha2, 1, n_fault_strands_for_smoothing);
-                invert.alpha2_initial = repmat(invert.alpha2_initial, 1, n_fault_strands_for_smoothing);
-                alpha2_modelparameter_initial = invert.alpha2_initial';
+                priors.min_alpha2 = repmat(priors.min_alpha2, 1, n_fault_strands_for_smoothing)';
+                priors.max_alpha2 = repmat(priors.max_alpha2, 1, n_fault_strands_for_smoothing)';
+                invert.alpha2_initial = repmat(invert.alpha2_initial, 1, n_fault_strands_for_smoothing)';
+                alpha2_modelparameter_initial = invert.alpha2_initial;
             end
             if strcmp(priors.alpha2_prior, 'logarithmic') == 1
                 %alpha2_modelparameter_initial = repmat(log10(invert.alpha2_initial)', n_fault_strands_for_smoothing, nwalkers);
                 %alpha2_modelparameter_initial = invert.alpha2_initial;
                 if priors.min_alpha2 == 0
-                   min_alpha2 = 0.001 * ones(length(priors.min_alpha2), 1); 
+                   min_alpha2 = 0.001 * ones(1, length(priors.min_alpha2)); 
                 else
                    min_alpha2 = priors.min_alpha2;
                 end
-                max_alpha2modelparameter = log10(priors.max_alpha2)';
-                min_alpha2modelparameter = log10(min_alpha2)';
+                max_alpha2modelparameter = log10(priors.max_alpha2);
+                min_alpha2modelparameter = log10(min_alpha2);
             else
                 alpha2_modelparameter_initial = repmat(invert.alpha2_initial, n_fault_strands_for_smoothing,nwalkers);
                 max_alpha2modelparameter = priors.max_alpha2';
@@ -1736,7 +1728,7 @@ if strcmp(invert.inversion_type, 'bayesian') == 1                         %bayes
     m_trial = m_curr(:,1);
     m_identifyer_master = [ 1* ones(size(slip_initial,1),1); 2*ones(size(alpha2_modelparameter_initial,1),1); 3*ones(size(rake_initial,1),1); 4*ones(size(dip_initial,1),1); 5*ones(size(offset_modelparameter_initial,1),1); 6*ones(size(beta_initial,1),1); 7*ones(size(circharm_coeffs_initial,1),1); 8*ones(size(circharm_phi_initial,1),1); 9*ones(size(circharm_center_initial,1),1); 10*ones(size(a_as_modelparameter_initial,1),1); 11*ones(size(a_dd_modelparameter_initial,1),1); 12*ones(size(ramp_modelparameter_initial,1),1)];
     m_max = [max_slip; max_alpha2modelparameter; max_rake; max_dip; max_offset; max_beta; max_circharm_coeffs; max_circharm_phi; max_circharm_center; max_a_as_modelparameter; max_a_dd_modelparameter; max_ramp];
-    m_min = [min_slip; min_alpha2modelparameter'; min_rake; min_dip; min_offset; min_beta; min_circharm_coeffs; min_circharm_phi; min_circharm_center; min_a_as_modelparameter; min_a_dd_modelparameter; min_ramp];
+    m_min = [min_slip; min_alpha2modelparameter; min_rake; min_dip; min_offset; min_beta; min_circharm_coeffs; min_circharm_phi; min_circharm_center; min_a_as_modelparameter; min_a_dd_modelparameter; min_ramp];
     if strcmp(invert.ensemble_sampling, 'no') == 1
         step_sizes = [patch_step_sizes_initial; alpha2_step_size_initial; rake_step_size_initial; dip_step_size_initial; offset_step_size_initial; beta_step_size_initial; circharm_coeffs_step_size_initial;  circharm_phi_step_size_initial; circharm_center_step_size_initial; a_as_step_size; a_dd_step_size; ramp_step_size_initial];
         %step_sizes_master = step_sizes;
@@ -1837,7 +1829,6 @@ if strcmp(invert.inversion_type, 'bayesian') == 1                         %bayes
     if strcmp(invert.simulated_annealing_start, 'yes') == 1
         
         disp('Performing simulated annealing to find best start values.')
-        disp('Note this only works for von Karman smoothed inversion.')
         
         % Initial values
         m_simulatedannealing = m_initial(m_identifyer ~= 7 & m_identifyer ~= 8 & m_identifyer ~= 9 & m_identifyer ~= 10 & m_identifyer ~= 11);  % not trying to solve for circ harmonic parameters
@@ -1969,229 +1960,6 @@ if strcmp(invert.inversion_type, 'bayesian') == 1                         %bayes
             offset_curr = zeros( length(d), 1);
         end
         
-        
-% %********** Solve for which circular harmonic variables *******************
-%         if strcmp(invert.solve_for_fault_size, 'yes') == 1
-%             
-%             disp('  ')
-%             disp('Solving for initial circharm parameters using simulated annealing result.')
-%             disp('  ')
-%             
-%             % Turn off patches with less than 1/3 of maximum slip
-%             onoffidentifyer_aim = onoffidentifyer;
-%             onoffidentifyer_aim(m_initial(m_identifyer==1)<(max(m_initial(m_identifyer==1))/3)) = 0;   % Turn off patches with less than 1/3 max slip
-%               
-%             % Solve for circharm parameters that can turn off these patches
-%             icircharm = 10000;
-%             ch_coeffs_curr = m_initial(m_identifyer ==7);
-%             ch_phi_curr = m_initial(m_identifyer ==8);
-%             ch_center_curr = m_initial(m_identifyer ==9);
-%             ch_coeffs_keep = zeros(n_harmonics,icircharm);
-%             ch_phi_keep = zeros(n_harmonics-1,icircharm);
-%             ch_center_keep = zeros(2,icircharm);
-%             logprob_keep = zeros(1,icircharm);
-%             %ch_sigma_d = diag(((max(m_initial(m_identifyer==1)))./m_initial(m_identifyer==1)));  % Give more weight to squares that have higher slip (we REALLY want these patches to be on)
-%             ch_sigma_d = diag( ones(length(m_initial(m_identifyer==1)),1));
-%             inv_ch_sigma_d = inv(ch_sigma_d);
-%             logprob_curr = -(onoffidentifyer_aim - onoffidentifyer)'*inv_ch_sigma_d*(onoffidentifyer_aim - onoffidentifyer);
-%             
-%             for qq = 1:icircharm
-%                 
-%                 % Add random number to circharm parameters
-%                 ch_coeffs_trial = ch_coeffs_curr + (-250 + (500).*rand(n_harmonics,1));      % plus or minus 250
-%                 ch_phi_trial = ch_phi_curr + (-0.5 + (1).*rand(n_harmonics-1,1));            % plus or minus 1 radian
-%                 ch_center_trial = ch_center_curr + (-250 + (500).*rand(2,1));               % plus or minus 250
-%                 
-%                 % Make sure not too small / too big   - THIS IS CLUNKY
-%                 toosmall = ch_coeffs_trial < min_circharm_coeffs;
-%                 ch_coeffs_trial(toosmall) = 2*min_circharm_coeffs(toosmall) - ch_coeffs_trial(toosmall);
-%                 toobig = ch_coeffs_trial > max_circharm_coeffs;
-%                 ch_coeffs_trial(toobig) =  2*max_circharm_coeffs(toobig) - ch_coeffs_trial(toobig);
-%                 %
-%                 toosmall = ch_phi_trial < min_circharm_phi;
-%                 ch_phi_trial(toosmall) = 2*min_circharm_phi(toosmall) - ch_phi_trial(toosmall);
-%                 toobig = ch_phi_trial > max_circharm_phi;
-%                 ch_phi_trial(toobig) =  2*max_circharm_phi(toobig) - ch_phi_trial(toobig);
-%                 %
-%                 toosmall = ch_center_trial < min_circharm_center;
-%                 ch_center_trial(toosmall) = 2*min_circharm_center(toosmall) - ch_center_trial(toosmall);
-%                 toobig = ch_center_trial > max_circharm_center;
-%                 ch_center_trial(toobig) =  2*max_circharm_center(toobig) - ch_center_trial(toobig);
-%                 
-%                 % Work out which patches are 'on' and 'off'
-%                 [circx,circz]=circharm(ch_coeffs_trial,ch_phi_trial,0);     % Set to '1' if want to plot
-%                 circharm_center_trial = ch_center_trial;
-%                 onoffidentifyer_trial = inpolygon(patchx, patchz, (circx+circharm_center_trial(1)), (circz+circharm_center_trial(2)))';
-%                 
-%                 % Calculate new probability
-%                 logprob_trial = -(onoffidentifyer_aim - onoffidentifyer_trial)'*inv_ch_sigma_d*(onoffidentifyer_aim - onoffidentifyer_trial);                % log (   exp (d-Gm)'(d-Gm) )
-%                 
-%                 if exp( logprob_trial - logprob_curr) > rand
-%                     ch_coeffs_curr = ch_coeffs_trial;
-%                     ch_phi_curr = ch_phi_trial;
-%                     ch_center_curr = ch_center_trial;
-%                     logprob_curr = logprob_trial;
-%                     
-%                 end
-%                 
-%                 ch_coeffs_keep(:,qq) = ch_coeffs_curr;
-%                 ch_phi_keep(:,qq) = ch_phi_curr;
-%                 ch_center_keep(:,qq) = ch_center_curr;
-%                 logprob_keep(:,qq) = logprob_curr;
-%             end
-%             
-%             % Find most likely solution
-%             [~, I] = max(logprob_keep);
-%             circharm_coeffs_initial = ch_coeffs_keep(:, I);
-%             circharm_phi_initial = ch_phi_keep(:,I);
-%             circharm_center_initial = ch_center_keep(:,I);
-%             
-% %             % start with circharm bigger than whole fault
-% %             circharm_center_initial = [fault_length_for_smoothing/2; fault_width_for_smoothing/2];       % x,z offset
-% %             circharm_coeffs_initial = [ sqrt((fault_length_for_smoothing/2)^2 + (fault_width_for_smoothing/2)^2); zeros(n_harmonics-1,1)];      % so the circle starts bigger than the fault
-% %             circharm_phi_initial = zeros(n_harmonics-1,1);
-%             
-%             % start with right-ish area
-%             %     circharm_center_initial = [fault_length_for_smoothing/2; fault_width_for_smoothing/2];       % x,z offset
-%             %     circharm_coeffs_initial = [3000; 0; 3600; 0];
-%             %     circharm_phi_initial = [0; (pi/3+pi/2); 0];
-% 
-%             % Check
-%             [circx,circz]=circharm(circharm_coeffs_initial,circharm_phi_initial,0);     % Set to '1' if want to plot
-%             onoffidentifyer = inpolygon(patchx, patchz, (circx+circharm_center_initial(1)), (circz+circharm_center_initial(2)))';
-%             
-%             figure;
-%             scatter(patchx(onoffidentifyer_aim==1), patchz(onoffidentifyer_aim==1), 1800, 'gs', 'filled')   % plot x and z of on patches
-%             hold on;
-%             scatter(patchx(onoffidentifyer_aim==0), patchz(onoffidentifyer_aim==0),1800, 'rs', 'filled')   % plot x and z of off patches
-%             plot(circx+circharm_center_initial(1),circz+circharm_center_initial(2));
-%             set(gca,'Ydir','reverse')
-%             axis equal tight
-%             axis([min([circz+circharm_center_initial(1) 0]) max([circz+circharm_center_initial(1)  fault_length_for_smoothing]) min([circx+circharm_center_initial(2) 0]) max([circx+circharm_center_initial(2)  fault_width_for_smoothing])])
-%             ylabel('Down dip')
-%             xlabel('Along strike')
-%             title('Slipping area on fault')
-%             
-%             % Use these values as starting values - recalcualte everything
-%             m_initial(m_identifyer_master == 7) = circharm_coeffs_initial;
-%             m_initial(m_identifyer_master == 8) = circharm_phi_initial;
-%             m_initial( m_identifyer_master == 9) = circharm_center_initial;
-%             mcircharmfreeze = m_initial(circharmparameters==1);
-%             
-%             for n = 1:n_fault_strands_for_smoothing
-%                 n_slip_patches_ON_on_each_fault_strand_for_smoothing(n,1) = sum(onoffidentifyer(first_patch_in_strand_for_smoothing_master(n):last_patch_in_strand_for_smoothing_master(n),1));
-%             end
-%             previous_n_slip_patches_ON_on_each_fault_strand_for_smoothing = n_slip_patches_ON_on_each_fault_strand_for_smoothing;
-%             first_patch_in_strand_for_smoothing(1) = 0;
-%             first_patch_in_strand_for_smoothing(2:(n_fault_strands_for_smoothing+1),1) = cumsum(n_slip_patches_ON_on_each_fault_strand_for_smoothing);
-%             first_patch_in_strand_for_smoothing = first_patch_in_strand_for_smoothing+1;
-%             first_patch_in_strand_for_smoothing(n_fault_strands_for_smoothing+1) = [];
-%             last_patch_in_strand_for_smoothing = cumsum(n_slip_patches_ON_on_each_fault_strand_for_smoothing);
-%             
-%             %  Update fault size - NOTE THIS ONLY WORKS FOR ONE FAULT STRAND FOR NOW. If doing for more than one fault strands need to sum along the fault, not just the change in utmx and utmy between the patches.
-%             tippytop = min(disloc_model(8,onoffidentifyer==1));     % this finds the minimum top depth of any patches that are on from the matrix disloc model
-%             verybottom = max(disloc_model(8,onoffidentifyer==1));   % this finds the maximum top depth of any patches that are on from the matrix disloc model
-%             slippingpatch_width_for_smoothing =  verybottom-tippytop;
-%             
-%             farleft = min(disloc_model(1,onoffidentifyer==1));
-%             farright = max(disloc_model(1,onoffidentifyer==1));
-%             slippingpatch_length_for_smoothing = abs(farleft-farright);           % abs in case in a synthetic test you've defined +x and -x
-%             
-%             if length(slippingpatch_width_for_smoothing) == 0
-%                 slippingpatch_width_for_smoothing = 0;
-%             end
-%             
-%             if length(slippingpatch_length_for_smoothing) == 0
-%                 slippingpatch_length_for_smoothing = 0;
-%             end
-%             
-%             % Recalculate correlation lengths - drawing from distribution if solving for correlation lengths.            
-%             if strcmp(invert.solve_for_correlation_length, 'yes') == 1
-%                 if strcmp(predominant_faulting_style, 'ss') == 1
-%                     % Strike slip parameters
-%                     a_as_ss_mean = 1860 + 0.34*slippingpatch_length_for_smoothing;
-%                     a_as_ss_std = sqrt(1120^2+0.03^2*slippingpatch_length_for_smoothing^2);          % Errors from (Mai and Beroza, 2002), Table 2, Pg 14
-%                     a_dd_ss_mean = -390 + 0.44 *slippingpatch_width_for_smoothing;                   % Propagation of errors from talbe on Wikipedia (shh)  https://en.wikipedia.org/wiki/Propagation_of_uncertainty
-%                     a_dd_ss_std = sqrt(470^2+0.04^2*slippingpatch_width_for_smoothing^2);
-%                 elseif strcmp(predominant_faulting_style, 'ds') == 1
-%                     % Dip slip parameters
-%                     a_as_ds_mean =  1100 + 0.31*slippingpatch_length_for_smoothing;
-%                     a_as_ds_std = sqrt(400^2+0.01^2*slippingpatch_length_for_smoothing^2);
-%                     a_dd_ds_mean =  580 + 0.35*slippingpatch_width_for_smoothing;
-%                     a_dd_ds_std = sqrt(240^2+0.01^2*slippingpatch_width_for_smoothing^2);
-%                 end
-%             end
-%             
-%             for n = 1 : n_fault_strands_for_smoothing
-%                 if strcmp(predominant_faulting_style(n), 'ss') == 1
-%                     if strcmp(invert.solve_for_correlation_length, 'yes') == 1
-%                         a_as(n) = a_as_ss_mean + erfinv(m_trial(m_identifyer==10))*sqrt(2)*a_as_ss_std;   % Have to use error function trick to draw from a normal distribution, since we can't do a random walk with randn function
-%                         a_dd(n) = a_dd_ss_mean + erfinv(m_trial(m_identifyer==11))*sqrt(2)*a_dd_ss_std;
-%                     else
-%                         a_as(n) =  1860 + 0.34*(slippingpatch_length_for_smoothing(n));          % Along-strike.  fault_length = meters  (Mai and Beroza, 2002)
-%                         a_dd(n) =  -390 + 0.44 * (slippingpatch_width_for_smoothing(n));         % Down-dip.      fault_width  = meters  (Mai and Beroza, 2002)
-%                         
-%                     end
-%                 elseif strcmp(predominant_faulting_style(n), 'ds') == 1
-%                     if strcmp(invert.solve_for_correlation_length, 'yes') == 1
-%                         a_as(n) = a_as_ds_mean + erfinv(m_trial(m_identifyer==10))*sqrt(2)*a_as_ds_std;
-%                         a_dd(n) = a_dd_ds_mean + erfinv(m_trial(m_identifyer==11))*sqrt(2)*a_dd_ds_std;
-%                     else
-%                         a_as(n) =  1100 + 0.31*(slippingpatch_length_for_smoothing(n));          % Along-strike.  fault_length = meters  (Mai and Beroza, 2002)
-%                         a_dd(n) =  580 + 0.35* (slippingpatch_width_for_smoothing(n));         % Down-dip.      fault_width  = meters  (Mai and Beroza, 2002)
-%                     end
-%                 end
-%             end
-%             
-%    
-%             % Recalculate scaled distances
-%             [r_over_a, ~] = calc_scaled_dist( n_fault_strands_for_smoothing, disloc_model, a_as, a_dd, first_patch_in_strand_for_smoothing_master, last_patch_in_strand_for_smoothing_master, along_strike_sep_dist, n_along_strike_patches_for_smoothing, n_down_dip_patches_for_smoothing,fault_strand_togetherness);
-%             
-%             % Recalculate sigma_s
-%             sigma_s = calc_sigma_s( r_over_a(first_patch_in_strand_for_smoothing_master(n):last_patch_in_strand_for_smoothing_master(n),first_patch_in_strand_for_smoothing_master(n):last_patch_in_strand_for_smoothing_master(n)), H(first_patch_in_strand_for_smoothing_master(n):last_patch_in_strand_for_smoothing_master(n),first_patch_in_strand_for_smoothing_master(n):last_patch_in_strand_for_smoothing_master(n)));       % NOTE that this is actually a SEPARATE SIGMA S MATRIX FOR EACH FAULT STRAND, just stored in one big matrix
-%             if strcmp(invert.add_correlation_matrix_stabiliser, 'yes') == 1
-%                 sigma_s = sigma_s + diag( 0.01*ones(total_n_slip_patches,1));
-%             end
-%             sigma_s(:, onoffidentifyer==0) = [];            % slice columns out of master
-%             sigma_s(onoffidentifyer==0, :) = [];            % slice rows out of master
-%             
-%             det_sigma_s = det(sigma_s);
-%             inv_sigma_s = inv(sigma_s);     %Uncomment below for multiple fault strands
-%             %det_sigma_s_keep(:,faultsizecount) = det_sigma_s;
-%             
-%                         % slip              % alpha                             % rake              %dip                                    % offset                                        % beta                   % circharms.
-%             m_on = [onoffidentifyer; ones(n_fault_strands_for_smoothing,1); onoffidentifyer; ones(size(dip_initial,1),1); ones(size(offset_modelparameter_initial,1),1); ones(size(beta_initial,1),1); ones(sum(circharmparameters), 1)];
-%             m_identifyer = m_identifyer_master;
-%             m_identifyer(m_on==0) = [];  % Remove appropriate slip rows and rake rows from m_identifyer
-%             
-%             % Remove 'off' patches, and corresponding rakes, and G_temp
-%             m_curr = m_initial;
-%             %mfreeze = m_curr(m_on==0); % Keep the values of m_curr that are now off, for when these patches turn back on
-%             m_trial = m_initial;        % this is necessary so all the matrices are the right lengths, plus circharm parameters are correct (since they don't change on every iteration)
-%             m_initial(m_on==0) = [];
-%             G_curr(:, onoffidentifyer==0) = [];
-%             
-%             % Clear not useful things
-%             clear ch_coeffs_trial
-%             clear ch_phi_trial
-%             clear ch_center_trial
-%             clear ch_coeffs_curr
-%             clear ch_phi_curr
-%             clear ch_center_curr
-%             clear ch_coeffs_keep
-%             clear ch_phi_keep
-%             clear ch_center_keep
-%             clear logprob_trial
-%             clear logprob_curr
-%             clear logprob_keep
-%             clear ch_sigma_d
-%             clear inv_ch_sigma_d
-%             clear logL_curr_unscaled
-%             clear logL_trial_unscaled
-%             clear m_max_simulatedannealing
-%             clear m_min_simulatedannealing
-%         end
-         
         % Show result
         figure; faults = disloc_model(:,onoffidentifyer==1); faults(6,:) = m_curr(m_on==1&m_identifyer_master==1)'; doplot3d(faults', 'jet'); colorbar
         title(['alpha^2 = ', num2str(alpha2_initial)]);
@@ -2749,19 +2517,6 @@ end
                     %new_step_sizes = step_sizes;
                     step_sizes_keep(:, sens_test_number) = new_step_sizes;
                     step_sizes = new_step_sizes;
-                    
-%                     % Calculate confidence intervals
-%                     if store_number > 2000         % after burn in
-%                         % calculate confidence interval from https://uk.mathworks.com/matlabcentral/answers/159417-how-to-calculate-the-confidence-interval
-%                         %this_slip_batch = (slip_keep(:, store_number_at_sens_test(1,sens_test_number-1):store_number_at_sens_test(1,sens_test_number)-1));
-%                         this_slip_batch = (m_keep(m_identifyer==1, store_number_at_sens_test(1,sens_test_number-1):store_number_at_sens_test(1,sens_test_number)-1));
-%                         n_entries = store_number_at_sens_test(1,sens_test_number)-store_number_at_sens_test(1,sens_test_number-1);
-%                         SEM(:,sens_test_number) = (std( this_slip_batch') ./sqrt(n_entries))';               % Standard Error
-%                         ts = tinv([0.025  0.975],(n_entries-1));      % T-Score
-%                         CI_low(:,sens_test_number) = mean(this_slip_batch')' + (ts(1)*SEM(:,sens_test_number));                     % Confidence Intervals
-%                         CI_high(:,sens_test_number) = mean(this_slip_batch')' + ts(2)*SEM(:,sens_test_number);                      % Confidence Intervals
-%                         clear this_slip_batch
-%                     end
                     
                 end
                 
