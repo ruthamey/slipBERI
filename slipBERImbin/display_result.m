@@ -288,6 +288,96 @@ if strcmp(invert.inversion_type, 'bayesian') == 1
 
 end
 
+%% Plot confidence intervals
+
+%can only use this if you used a version of slipBERi that calculated CI_low and CI_high
+% plot iterations vs confidence intervals and change in confidence intervals
+%     figure
+%     plot( store_number_at_sens_test, CI_low', 'b');
+%     hold on;
+%     plot( store_number_at_sens_test, CI_high', 'r');
+%     title('95% confidence');
+%     legend('Low', 'High');
+%     xlabel('Iterations')
+%     ylabel('Slip (meters)');
+% 
+%     figure
+%     plot( store_number_at_sens_test, diff(CI_low)', 'b');
+%     hold on;
+%     plot( store_number_at_sens_test, diff(CI_high)', 'r');
+%     title('diff in 95% confidence');
+%     legend('Low', 'High');
+%     xlabel('Iterations')
+%     ylabel('Slip (meters)');
+%     
+%     figure
+%     plot( store_number_at_sens_test, mean(diff(CI_low))', 'b');
+%     hold on;
+%     plot( store_number_at_sens_test, mean(diff(CI_high))', 'r');
+%     title('mean diff in 95% confidence');
+%     legend('Low', 'High');
+%     xlabel('Iterations')
+%     ylabel('Slip (meters)');
+
+
+% % restrospectively
+% 
+% sens_test_for_conf = sens_test;
+% sens_test_for_conf(sens_test_for_conf > size(slip_keep,2)) =[];
+% sens_test_for_conf(end) = []; %coz that's nan
+% 
+% for i = 1: length(sens_test_for_conf)
+% 
+%      slip_to_calc_conf = slip_keep(:, 1:sens_test_for_conf(i));
+% %     n_entries = size(slip_to_calc_conf,2);
+% %     SEM_beginning_to_end(:,i) = (std( slip_to_calc_conf') ./sqrt(n_entries))';               % Standard Error
+% %     ts = tinv([0.05  0.95],(n_entries-1));      % T-Score
+% %     CI_low_beginning_to_end(:,i) = mean(slip_to_calc_conf')' + (ts(1)*SEM_beginning_to_end(:,i));                     % Confidence Intervals
+% %     CI_high_beginning_to_end(:,i) = mean(slip_to_calc_conf')' + ts(2)*SEM_beginning_to_end(:,i);                      % Confidence Intervals
+% %     clear slip_to_calc_conf
+%     confidence_intervals_beginning_to_end(:,:,i) = prctile(slip_to_calc_conf',[5 95]);
+%     
+% end
+% 
+% CI_low_beginning_to_end(:,:) = confidence_intervals_beginning_to_end(1,:,:);
+% CI_high_beginning_to_end(:,:) = confidence_intervals_beginning_to_end(2,:,:);
+
+%confidence_intervals_diff = diff(confidence_intervals_beginning_to_end);
+
+% % plot confidence interval for all slip patches
+% figure('position', [100, 300, 800, 1000])
+% subplot(3,1,1)
+% plot( sens_test_for_conf, CI_low_beginning_to_end', 'b');
+% hold on;
+% plot( sens_test_for_conf, CI_high_beginning_to_end', 'r');
+% title('95% confidence');
+% ylim([0 max(CI_low_beginning_to_end(:,1))])
+% %legend('Low', 'High');
+% %xlabel('Iterations')
+% %ylabel('Slip (meters)');
+% 
+% % plot difference in confidence interval for all slip patches
+% %figure
+% subplot(3,1,2)
+% plot( sens_test_for_conf, diff(CI_low_beginning_to_end)', 'b');
+% hold on;
+% plot( sens_test_for_conf, diff(CI_high_beginning_to_end)', 'r');
+% title('95% confidence difference');
+% ylim([min(diff(CI_low_beginning_to_end(:,1)')) max(diff(CI_low_beginning_to_end(:,1)'))])
+% %legend('Low', 'High');
+% %xlabel('Iterations')
+% ylabel('Slip (meters)');
+% 
+% % this is the mean of all of the patches (coz I was getting may be 10 outliers, but for all I know they could be poorly constrained ones at hte bottom.
+% %figure
+% subplot(3,1,3)
+% plot( sens_test_for_conf, mean(diff(CI_low_beginning_to_end))', 'b');
+% hold on;
+% plot( sens_test_for_conf, mean(diff(CI_high_beginning_to_end))', 'r');
+% title('95% confidence mean difference');
+% %legend('Low', 'High');
+% xlabel('Iterations')
+% %ylabel('Slip (meters)');
 
 %% If in testing mode, plot 95% conf with true value
 
@@ -1151,12 +1241,8 @@ if strcmp( display.plothists, 'plothistsall') == 1
        set(gca,'YTick',[]);
        set(gca,'Xticklabel',[])
        %title(['Slip patch ', num2str(i)])
-       %ylim([0, max(max(counts))]);
-       %xlim([0 2.5])
-       %xlim([0 5])
-       %ylim([0 8e5])
-       %xlim([0 2.5])
-       %ylim([0 4e5])
+       ylim([0 invert.iterations/3])
+       xlim([0 max(max(slip_keep))])
     end
   
 % Put x and y labels on middle-outside plots
