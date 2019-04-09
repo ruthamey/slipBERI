@@ -102,7 +102,6 @@ display = struct('plot_resolution_matrix', 'no',...
 % display all the structures so people actually look and check
 disp('elastic_params'), disp(elastic_params)
 disp('housekeeping ='); disp(housekeeping)
-disp('testing ='), disp(testing)
 disp('display ='), disp(display)
 disp('fault ='); disp(fault)
 disp('data ='); disp(data)
