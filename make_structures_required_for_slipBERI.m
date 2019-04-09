@@ -33,25 +33,27 @@ data = struct('InSAR_datafile', {{'name_of_InSAR_datafile.txt'}}, ...       % {{
 % 'invert' contains details of how the inversion will be performed   
 invert = struct('quickcheck', 'yes',...                         % 'yes' or 'no'
                 'inversion_type', 'bayesian', ...               % 'bayesian' or 'least_squares'
+                'iterations', 100000, ...                       % only relevant for bayesian inversions
                 'smoothing', 'VK',...                           % 'VK' or 'laplacian' or 'none'
                 'smooth_across_fault_strands', 'yes',...        % 'yes' or 'no'
-                'iterations', 100000, ...                       % only relevant for bayesian inversions
-                'regularise_moment', 'no', ...                  % 'yes' or 'no'
-                'solve_for_InSAR_offset', 'no',...              % 'yes' or 'no'
-                'solve_for_InSAR_ramp', 'no',...                % 'yes' or 'no'
-                'solve_for_fault_size', 'no', ...               % 'yes' or 'no'
                 'slip_initial', 0.7, ...                        % meters
                 'step_size', 0.05, ...                          % metres
-                'alpha2_initial', 0.01,...                
-                'probability_target_initial', 0.001, ...
-                'alpha2_step_size', 0.01,...         
                 'variable_rake', 'yes',...                      % 'yes' or 'no'
-                'load_old_MCMC_chain', 'no',...                 % 'no' or name of old chain to be reloaded and inversion continued
+                'solve_for_InSAR_offset', 'no',...              % 'yes' or 'no'
+                'solve_for_InSAR_ramp', 'no',...                % 'yes' or 'no'
+                'regularise_moment', 'no', ...                  % 'yes' or 'no'
+                'alpha2_initial', 0.01,...    
+                'alpha2_step_size', 0.01,... 
+                'probability_target_initial', 0.001, ...
                 'solve_for_beta', 'no',...                      % 'yes' or 'no'
                 'beta_initial', 1,...
                 'beta_step_size', 0,...
-                'simulated_annealing_start', 'no', ...          % 'yes' or 'no'. Only works for von Karman regularisation.      
-                'add_correlation_matrix_stabiliser', 'no');     % use 'no' for standard von karman inversion, and 'yes' for trans-dimensional (i.e. when invert.solve_for_fault_size = 'yes')          
+                'simulated_annealing_start', 'no', ...          % 'yes' or 'no'. Only works for von Karman regularisation.
+                'solve_for_fault_size', 'no', ...               % 'yes' or 'no'
+                'add_correlation_matrix_stabiliser', 'no',...     % use 'no' for standard von karman inversion, and 'yes' for trans-dimensional (i.e. when invert.solve_for_fault_size = 'yes')                
+                'load_old_MCMC_chain', 'no');                 % 'no' or name of old chain to be reloaded and inversion continued
+                        
+
 
 % priors contains details about the prior information which will be used in the inversion
 priors = struct('slip_prior', 'boxcar', ...                     % 'boxcar', 'gaussian' or 'logarithmic'
@@ -63,7 +65,7 @@ priors = struct('slip_prior', 'boxcar', ...                     % 'boxcar', 'gau
                 'alpha2_prior', 'logarithmic',...                % 'boxcar' or 'logarithmic'
                 'min_alpha2', 0.001,...
                 'max_alpha2', 2,...
-                'alphaflag', [],...                             % 'bothsame' or []
+                'alpha2flag', [],...                             % 'bothsame' or []
                 'min_offset', -1,...                            % metres
                 'max_offset', 1,...                             % metres
                 'max_beta', 1,...
