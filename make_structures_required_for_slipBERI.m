@@ -1,6 +1,8 @@
 % This script makes the default structures for the slipBERI code
 %
-% For details on what each parameter is, please see the help for slipBERI
+% For details on what each parameter is, please see the help for slipBERI:
+% https://docs.google.com/document/d/1cUXLRxN-oB8Q8kGOueq2c-Zxr3W1vDgWpGUw1MAEx5s/edit#
+
 
 clear all
 
@@ -40,15 +42,16 @@ invert = struct('quickcheck', 'yes',...                         % 'yes' or 'no'
                 'solve_for_fault_size', 'no', ...               % 'yes' or 'no'
                 'slip_initial', 0.7, ...                        % meters
                 'step_size', 0.05, ...                          % metres
-                'alpha_initial', 0.01,...                
+                'alpha2_initial', 0.01,...                
                 'probability_target_initial', 0.001, ...
-                'alpha_step_size', 0.01,...         
+                'alpha2_step_size', 0.01,...         
                 'variable_rake', 'yes',...                      % 'yes' or 'no'
                 'load_old_MCMC_chain', 'no',...                 % 'no' or name of old chain to be reloaded and inversion continued
                 'solve_for_beta', 'no',...                      % 'yes' or 'no'
                 'beta_initial', 1,...
-                'beta_step_size', 0.01,...
-                'simulated_annealing_start', 'no');             % 'yes' or 'no'. Only works for von Karman regularisation.      
+                'beta_step_size', 0,...
+                'simulated_annealing_start', 'no', ...          % 'yes' or 'no'. Only works for von Karman regularisation.      
+                'add_correlation_matrix_stabiliser', 'no');     % use 'no' for standard von karman inversion, and 'yes' for trans-dimensional (i.e. when invert.solve_for_fault_size = 'yes')          
 
 % priors contains details about the prior information which will be used in the inversion
 priors = struct('slip_prior', 'boxcar', ...                     % 'boxcar', 'gaussian' or 'logarithmic'
@@ -57,7 +60,7 @@ priors = struct('slip_prior', 'boxcar', ...                     % 'boxcar', 'gau
                 'predominant_faulting_style', {{'ss'}},...      % 'ss' = strike-slip and 'ds' = dip-slip. These are used to calculate the von Karman autocorrelation lengths, using the appropriate equation for strike-slip or dip-slip
                 'min_rake', 150,...                             % degrees.
                 'max_rake', 210,...                             % degrees
-                'alpha_prior', 'logarithmic',...                % 'boxcar' or 'logarithmic'
+                'alpha2_prior', 'logarithmic',...                % 'boxcar' or 'logarithmic'
                 'min_alpha2', 0.001,...
                 'max_alpha2', 2,...
                 'alphaflag', [],...                             % 'bothsame' or []
