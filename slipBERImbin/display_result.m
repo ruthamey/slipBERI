@@ -1381,7 +1381,9 @@ if strcmp(display.plot3d, 'yes') == 1
     %doplot3d_ruthhack_utm2ll(faults', 'jet', data.UTMzone*ones(total_n_slip_patches,1))
     hold on;
     colorbar
-    caxis([0, cmaxvalue]);
+    %caxis([0, cmaxvalue]);
+    caxis([0, max(faults(6,:))]);
+    caxis([0, 3]);
     title('3D mean')
     xlabel('UTM x')
     ylabel('UTM y')
@@ -1402,12 +1404,26 @@ if strcmp(display.plot3d, 'yes') == 1
     %scatter3( utmx, utmy, data_EQ_epicenter(3), 'yp', 'filled');
     
     % Add rake
-    quiv_mags = [patch_mode.*cosd(rake_mode), patch_mode.*sind(rake_mode)];
+    quiv_mags = [faults(6,:)'.*cosd(rake_mode), faults(6,:)'.*sind(rake_mode)];
     [xquivmag,yquivmag,zquivmag] = reproject_quiv(quiv_mags,disloc_model(3,:)',disloc_model(4,:)');   % nicked from Tom.   reproject_quiv(ss_mag, ds_mag, strike, dip)
     %[xquivmag,yquivmag,zquivmag] = pol2cart(disloc_model(3,:)',rake_mode,patch_mode);
     scale_factor = 0.7;
-    quiver3(   disloc_model(1,:)'/1000,     disloc_model(2,:)'/1000,    (disloc_model(8,:)+disloc_model(9,:))'/(-2*sind(disloc_model(4,1)))/1000    ,xquivmag*scale_factor, yquivmag*scale_factor, zquivmag*scale_factor, 'k', 'Linewidth', 1.5, 'Autoscale', 'off');
     
+    % work out where to plot rake points
+    dip = disloc_model(4,1);
+    extrawidth = abs(cosd(dip) * (disloc_model(8,:)+disloc_model(9,:))'/(-2*sind(disloc_model(4,1))))';
+    x_extra = abs(extrawidth * cosd(strike));
+    y_extra = abs(extrawidth * sind(strike));
+    hold on;
+    if strike > 90 && strike <= 180 || strike > 180 && strike <= 270
+         x_extra = -x_extra;
+    end
+    if strike >= 0 && strike <= 90 || strike > 90 && strike <= 180
+        y_extra = -y_extra;
+    end
+    %quiver3(   (disloc_model(1,:)'+ x_extra )/1000,     (disloc_model(2,:)'- y_extra)/1000 ,    (disloc_model(8,:)+disloc_model(9,:))'/(-2*sind(disloc_model(4,1)))/1000    ,xquivmag*scale_factor, yquivmag*scale_factor, zquivmag*scale_factor, 'k', 'Linewidth', 1.5, 'Autoscale', 'off');
+    quiver3(   (disloc_model(1,:) + x_extra )/1000,     (disloc_model(2,:) + y_extra)/1000 ,    -((disloc_model(9,:)-disloc_model(8,:))/2 + disloc_model(8,:))/1000,       xquivmag'*scale_factor,      yquivmag'*scale_factor,       zquivmag'*scale_factor, 'k', 'Linewidth', 1.5, 'Autoscale', 'off');
+   
 end
 
          
