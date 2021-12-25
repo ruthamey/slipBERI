@@ -16,8 +16,8 @@ strikeslip = optimalmodel(8);
 dipslip = optimalmodel(9);
 
 % Calculate rake
-%rake = tand(dipslip/strikeslip);
-rake =90;
+rake = tand(dipslip/strikeslip);
+%rake =90;
 
 % Convert x and y from local coordinate system to lat long
 load(inversion_result_file, 'geo')
